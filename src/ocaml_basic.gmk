@@ -1,0 +1,80 @@
+## -*- Makefile -*-
+##
+##
+
+stdlib_interfaces = \
+	bigarray \
+	num \
+	str \
+	unix \
+
+stdlib_archives = \
+	bigarray \
+	nums \
+	str \
+	unix \
+##	camlp4
+
+lib_interfaces = $(stdlib_interfaces) $(extra_interfaces)
+lib_archives = $(stdlib_archives) $(extra_archives)
+
+ocaml_inc_path = $(shell for l in $(lib_interfaces); do ocamlfind query -i-format $$l ; done | sort -u) $(shell ocamlfind query -i-format camlp4)
+ocaml_load_path = $(shell for l in $(lib_interfaces); do ocamlfind query -format "-I %d -ccopt -L%d" $$l ; done | sort -u) $(shell ocamlfind query -format "-I %d -ccopt -L%d" camlp4)
+ocaml_extra_inc_path = 
+ocaml_extra_load_path = 
+
+ocamlyacc = ocamlyacc
+ocamllex = ocamllex
+ocamldep = ocamldep
+
+ocamlc_debug = -g
+ocamlc_annot = -annot
+#ocaml_warning = -w A
+ocamlc_opt = $(ocaml_warning) $(ocamlc_debug) $(ocamlc_annot)
+ocamlc = ocamlc.opt
+
+byte_archives = $(lib_archives:=.cma)
+BYTE_COMPILE.ml = $(ocamlc) $(ocamlc_opt) $(ocaml_inc_path) $(ocaml_extra_inc_path) -c
+BYTE_LINK.ml = $(ocamlc) $(ocamlc_opt) $(ocaml_inc_path) $(ocaml_extra_inc_path) $(ocaml_load_path) $(ocaml_extra_load_path) $(ocaml_ldflags)
+BYTE_LINK.cmo = $(ocamlc) $(ocamlc_opt) $(ocaml_load_path) $(ocaml_extra_load_path) $(ocaml_ldflags)
+
+INTERFACE.ml = $(ocamlc) $(ocamlc_opt) $(ocaml_inc_path) $(ocaml_extra_inc_path) -i
+
+
+ocamlopt_opt = $(ocaml_warning)
+ocamlopt = ocamlopt.opt
+
+nat_archives = $(lib_archives:=.cmxa)
+NAT_COMPILE.ml = $(ocamlopt) $(ocamlopt_opt) $(ocaml_inc_path) $(ocaml_extra_inc_path) -c
+NAT_LINK.ml = $(ocamlopt) $(ocamlopt_opt) $(ocaml_inc_path) $(ocaml_extra_inc_path) $(ocaml_load_path) $(ocaml_extra_load_path) $(ocaml_ldflags)
+NAT_LINK.cmx = $(ocamlopt) $(ocamlopt_opt) $(ocaml_load_path) $(ocaml_extra_load_path) $(ocaml_ldflags)
+
+
+%.ml %.mli: %.mly
+	$(ocamlyacc) $<
+
+%.ml: %.mll
+	$(ocamllex) $<
+
+%.cmi: %.mli
+	$(BYTE_COMPILE.ml) $<
+
+%.cmo %.cmi: %.ml
+	$(BYTE_COMPILE.ml) $< -o $@
+
+%.cmx %.o %.cmi: %.ml
+	$(NAT_COMPILE.ml) $< -o $@
+
+%.auto.mli: %.ml
+	$(INTERFACE.ml) $(@:.mli=.ml) > $@
+
+# info:
+# 	@echo "byte_stdlibs = $(byte_stdlibs)"
+# 	@echo "nat_stdlibs  = $(nat_stdlibs)"
+
+# obj-clean:
+# 	$(RM) *.cmi *.cmo *.cmx *.o
+
+##
+## end
+##
