@@ -15,7 +15,21 @@ include ocaml_basic.gmk
 
 all: scratch.cma
 
-scratch.cma: symbol.cmo token.cmo hsUlexer.cmo hsUlexerTest.cmo lazyList.cmo parser.cmo simple.cmo
+sources = \
+	symbol.ml \
+	token.ml \
+	lazyList.ml \
+	hsUlexer.ml \
+	hsUlexerTest.ml \
+	hsLayout.ml \
+	hsLayoutTest.ml \
+	parser.ml \
+	simple.ml \
+	t.ml
+
+objs = $(sources:.ml=.cmo)
+
+scratch.cma: $(objs)
 	ocamlfind ocamlc -a -o $@ $(OCAMLFIND_OPT) $(OCAMLFIND_ULEX_OPT) $^
 
 #scratchold.cma: batParserCoExt.cmo token.cmo sSyntax.cmo sUlexer.cmo sCparser.cmo sTestOld.cmo

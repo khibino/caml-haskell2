@@ -18,7 +18,7 @@ struct
     | LazyList.Cons (i, tl) when f i -> Some (i, tl)
     | _ -> None
 
-  let tokens tkg usti ustf = LazyList.unfold () (fun () -> Some (tkg (), ()))
+  let tokens tkg = LazyList.unfold () (fun () -> Some (tkg (), ()))
 
   let run p tkl = match p tkl with None -> None | Some (e, _) -> Some e
 end

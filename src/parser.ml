@@ -12,7 +12,7 @@ sig
   val mplus   : ('tk, 'e) parser -> ('tk, 'e) parser -> ('tk, 'e) parser
   val satisfy : ('tk -> bool) -> ('tk, 'tk) parser
 
-  val tokens  :  (unit -> 'a) -> 'b -> ('a -> 'b -> 'b) -> ('a) tklist
+  val tokens  :  (unit -> 'a) -> ('a) tklist
 
   val run     : ('tk, 'e) parser -> ('tk) tklist -> ('e) result
 end
@@ -91,7 +91,7 @@ sig
   val pred : ('tk -> bool) -> ('tk, 'tk) parser
   val just : 'tk -> ('tk, 'tk) parser
 
-  val tokens : (unit -> 'a) -> 'b -> ('a -> 'b -> 'b) -> ('a) tklist
+  val tokens : (unit -> 'a) -> ('a) tklist
 
   val run : ('tk, 'e) parser -> ('tk) tklist -> ('e) result
 end

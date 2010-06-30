@@ -12,7 +12,7 @@ type position = {
   bol  : int;
 }
 
-let tk_pos pos = TK.pos pos.line (pos.curp - pos.bol)
+let tk_pos pos = TK.pos pos.line (pos.curp - pos.bol + 1)
 
 type context = {
   pos : position;
@@ -58,7 +58,7 @@ let next_position context =
       | [] -> pos
       | ("\r", _) :: ("\n", _) :: rest
       (* -> fix_pos_rec (newline pos) rest *)
-      | (("\r" | "\n"), _)     :: rest -> fix_pos_rec (newline pos) rest
+      | (("\r" | "\n" | "\x0c"), _)     :: rest -> fix_pos_rec (newline pos) rest
       | ("\t", _)              :: rest -> fix_pos_rec (tab pos)     rest
       |  _                     :: rest -> fix_pos_rec (other pos)   rest
   in
@@ -160,7 +160,7 @@ let decode_lstr_char lexbuf err =
 let regexp special = ['(' ')' ',' ';' '[' ']' '`' '{' '}']
 
 let regexp space = ' '
-let regexp newline = ("\r\n"|['\n' '\r'])
+let regexp newline = ("\r\n"|['\n' '\r' '\x0c' (* formfeed *) ])
 let regexp tab = '\t'
 
 let regexp dashes = '-' '-' '-'*
@@ -237,7 +237,7 @@ let regexp modid = conid
 
 module SYM = Symbol
 
-let rec do_lex context =
+let rec lex_haskell context =
   let next_context () = next_position context in
   let region () =
     let next_context = next_context () in
@@ -258,7 +258,7 @@ let rec do_lex context =
      SYM.intern (Str.string_after s idx))
   in
 
-  let skip () = do_lex (next_context ()) in
+  let skip () = lex_haskell (next_context ()) in
 
   let lex_char context =
     let lexbuf = LX.from_utf8_string (LX.utf8_lexeme context.lexbuf) in
@@ -388,3 +388,12 @@ let rec do_lex context =
 
   in
   hs_lexer context.lexbuf
+
+let lazy_list in_chan = 
+  let icxt = make_context in_chan in
+  let next_token (cxt, prev) =
+    if prev = Some (TK.EOF) then None
+    else let ((tk, _) as tkwl, cxt) = lex_haskell cxt in
+         Some (tkwl, (cxt, Some tk))
+  in
+  LazyList.unfold (icxt, None) next_token

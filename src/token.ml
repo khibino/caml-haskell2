@@ -26,6 +26,11 @@ let region start_p end_p = {
   end_p = end_p;
 }
 
+let offset region = region.start_p.col
+
+let other_line_p reg0 reg1 =
+  (reg1.start_p.line - reg0.end_p.line) > 0
+
 type typ =
   | SP_LEFT_PAREN
   | SP_RIGHT_PAREN
