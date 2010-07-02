@@ -57,7 +57,6 @@ let next_position context =
     match str with
       | [] -> pos
       | ("\r", _) :: ("\n", _) :: rest
-      (* -> fix_pos_rec (newline pos) rest *)
       | (("\r" | "\n" | "\x0c"), _)     :: rest -> fix_pos_rec (newline pos) rest
       | ("\t", _)              :: rest -> fix_pos_rec (tab pos)     rest
       |  _                     :: rest -> fix_pos_rec (other pos)   rest
@@ -128,12 +127,20 @@ let decode_cexpr err = function
 
     else Some (snd fchar)
 
-  | [] -> Some (err "zero length char expression!")
+  | [] -> Some (err "Zero length char expression!")
 
 let decode_char clist err =
   match decode_cexpr err clist with
     | Some c -> c
     | None   -> err (F.sprintf "Unkown char expression %s" (u8char_list_to_string clist))
+
+module NComment = struct
+  type t =
+    | Open
+    | Close
+    | Char of int
+    | Eof
+end
 
 module LChar = struct
   type t =
@@ -196,15 +203,14 @@ let regexp any = graphic | space | tab
 
 let regexp comment = dashes ((space | tab | small | large | digit | special | [':' '"' '\'']) (any) * )? newline
 
+let regexp opencom  = "{-"
+let regexp closecom = "-}"
+
 let regexp whitechar = newline | space | tab
 let regexp whitestuff = whitechar | comment 
 let regexp whitespace = (whitestuff)+
 
-(*
-let regexp lwhitechar = space | tab
-let regexp lwhitestuff = lwhitechar | comment 
-let regexp lwhitespace = (lwhitestuff)+
-*)
+let regexp l_any = graphic | whitechar
 
 let regexp char_gr = graphic_common | '"'
 let regexp str_gr  = graphic_common | '\''
@@ -213,7 +219,6 @@ let regexp charesc = ['a' 'b' 'f' 'n' 'r' 't' 'v' '\\' '"' '\'']
 let regexp str_charesc = charesc | '&'
 let regexp cntrl = ascLarge | ['@' '[' '\\' ']' '^' '_']
 let regexp gap = '\\' (whitechar)+ '\\'
-(* let regexp gap = '\\' (lwhitechar | newline)+ '\\' *)
 
 let regexp ascii = ('^' cntrl) | "NUL" | "SOH" | "STX" | "ETX" | "EOT" | "ENQ" | "ACK"
   | "BEL" | "BS" | "HT" | "LF" | "VT" | "FF" | "CR" | "SO" | "SI" | "DLE"
@@ -241,7 +246,8 @@ let rec lex_haskell context =
   let next_context () = next_position context in
   let region () =
     let next_context = next_context () in
-    (TK.region (tk_pos context.pos) (tk_pos next_context.pos), next_context) in
+    TK.region (tk_pos context.pos) (tk_pos next_context.pos), next_context
+  in
   let err msg = failwith (TK.string_of_region (fst (region ())) ^ ": " ^ msg) in
 
   let tk token =
@@ -259,6 +265,43 @@ let rec lex_haskell context =
   in
 
   let skip () = lex_haskell (next_context ()) in
+
+  let lex_ncomment context =
+    let ncomment_lexer =
+      (lexer
+          | opencom  -> NComment.Open
+          | closecom -> NComment.Close
+          | l_any    -> NComment.Char ((LX.lexeme context.lexbuf).(0))
+          | eof      -> NComment.Eof)
+    in
+
+    let start_p = tk_pos context.pos in
+
+    let err context msg =
+      let end_p   = tk_pos context.pos in
+      let region  = TK.region start_p end_p in
+      failwith ((TK.string_of_region region) ^ ": " ^ msg)
+    in
+
+    let rec parse_nest context level =
+      let rec parse context =
+        let token = ncomment_lexer context.lexbuf in
+        let context = next_position context in
+        match token with
+          | NComment.Open   ->
+            let (context, _) = parse_nest context (level + 1) in
+            parse context
+          | NComment.Close  -> (context, level)
+          | NComment.Char _ -> parse context
+          | NComment.Eof    -> err context "Lexing error duaring nested comment."
+      in
+      parse context
+    in
+
+    let (context, level) = parse_nest context 0 in
+    if level != 0 then err context "Invalid state nested comment?"
+    else context
+  in
 
   let lex_char context =
     let lexbuf = LX.from_utf8_string (LX.utf8_lexeme context.lexbuf) in
@@ -355,10 +398,8 @@ let rec lex_haskell context =
   | conid      -> tk (TK.T_CONID (lexsym ()))
       (** identifiers or may be qualified ones *)
 
-(*  | whitespace  -> tk TK.WS_WHITE  (** comment begining with dashes is not varsym *) *)
+  | opencom     -> lex_haskell (lex_ncomment context) (** skipping nested comment *)
   | whitespace  -> skip () (** comment begining with dashes is not varsym *)
-(*   | lwhitespace  -> tk TK.WS_WHITE  (\** comment begining with dashes is not varsym *\) *)
-(*   | newline      -> tk TK.WS_NEWLINE *)
       (** white spaces *)
 
   | plus       -> tk TK.KS_PLUS  (** maybe varsym *)
