@@ -29,7 +29,7 @@ let make_context chan =
 
 let u8char_list_lexeme lexbuf =
   List.map
-    (fun cp -> (Utf8.from_int_array [|cp|] 0 1, cp))
+    (fun cp -> (TK.u8string_of_cp cp, cp))
     (Array.to_list (LX.lexeme lexbuf))
 
 let u8char_list_to_string cl = S.concat "" (List.map fst cl)
@@ -256,13 +256,8 @@ let rec lex_haskell context =
   in
 
   let u8lexeme () = LX.utf8_lexeme context.lexbuf in
-  let lexsym () = SYM.intern (u8lexeme ()) in
-  let lexqsym () =
-    let s = u8lexeme () in
-    let idx = S.index s '.' in
-    (SYM.intern (Str.string_before s idx),
-     SYM.intern (Str.string_after s idx))
-  in
+  let lexsym () =   SYM.intern (u8lexeme ()) in
+  let lexqsym () =  TK.syms_of_qstring (u8lexeme ()) in
 
   let skip () = lex_haskell (next_context ()) in
 

@@ -8,16 +8,11 @@ if [ x"$EMACS" != x ]; then
 fi
 
 $rlwrap ocaml -init scratchInit.ml \
+	-I +lablgtk2 lablgtk.cma \
 	-I +ulex ulexing.cma \
 	dynlink.cma \
 	-I +camlp4 camlp4o.cma \
-	-I +estring pa_estring.cmo \
-	bigarray.cma \
 	unix.cma \
-	-I +camomile camomile.cma \
 	str.cma \
 	nums.cma \
-	-I +threads threads.cma \
-	-I +batteries batteries.cma \
-	-I +cf cf.cma \
 	scratch.cma
