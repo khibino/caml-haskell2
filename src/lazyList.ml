@@ -91,7 +91,16 @@ let tree_of_lzlist l =
       | Some (car, cdr)      -> (car, [cdr])
     )
 
-(* let show_tree t *)
+let show_token_tree to_string =
+  let rec show_token_tree il t =
+    let indent =
+      Format.sprintf "%2d>" il ^ String.make il ' '
+    in
+    match t_childs t with
+      | ((tk, _), chldl) ->
+        let () = print_endline (indent ^ (to_string tk)) in
+        List.iter (show_token_tree (il + 2)) chldl
+  in show_token_tree 0
 
 type 'a e_tree_t =
   | ENode of ('a * 'a e_tree_t list)
