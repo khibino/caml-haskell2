@@ -27,6 +27,8 @@ sources = \
 	hsLayoutTest.ml \
 	parser.ml \
 	simple.ml \
+	hsParser.ml \
+	hsParserTest.ml \
 	t.ml
 
 objs = $(sources:.ml=.cmo)

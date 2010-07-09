@@ -27,10 +27,10 @@ let input_of_L lex_lzl =
       -> scan_rec (cons (TK.BLK_OPEN (TK.offset region), region) lzl)
     | lazy Nil as lzl -> lzl
   in
-  tree_of_lzlist (scan lex_lzl)
+  scan lex_lzl
 
 
-let lazy_L : 'a tree_t -> 'a tree_t =
+let lazy_L : 'a t -> 'a forest_t =
 
   (* let rec lazy_L : (('a forest_t * int list) -> 'a forest_t) (f, ms) = *)
   let rec lazy_L (f, ms) =
@@ -90,6 +90,6 @@ let lazy_L : 'a tree_t -> 'a tree_t =
       (List.fold_left (fun res lz -> List.rev_append (rec_L (lz, ms)) res) [] f)
 
   in
-  (fun t -> match lazy_L ([t], []) with
-    | [out] -> out
+  (fun lz -> match lazy_L ([tree_of_lzlist lz], []) with
+    | [_] as out -> out
     | _     -> failwith "parse error. - layout - Wrong input token list." )

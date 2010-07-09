@@ -1,2 +1,3 @@
-module L  = HsUlexerTest
-module LO = HsLayoutTest
+module LX = HsUlexerTest
+module L  = HsLayoutTest
+module P  = HsParserTest

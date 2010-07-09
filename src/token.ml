@@ -32,7 +32,7 @@ let other_line_p reg0 reg1 =
   (reg1.start_p.line - reg0.end_p.line) > 0
 
 let syms_of_qstring s =
-  let idx = String.index s '.' in
+  let idx = String.rindex s '.' in
   (Symbol.intern (Str.string_before s idx),
    Symbol.intern (Str.string_after s idx))
 

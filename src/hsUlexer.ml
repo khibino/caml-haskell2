@@ -237,7 +237,7 @@ let regexp conid = large (small | large | digit | '\'')*
 let regexp varsym = symbol (symbol | ':')*
 let regexp consym = ':' (symbol | ':')*
 
-let regexp modid = conid
+let regexp modid = ( conid '.' )* conid
 
 
 module SYM = Symbol
@@ -256,8 +256,8 @@ let rec lex_haskell context =
   in
 
   let u8lexeme () = LX.utf8_lexeme context.lexbuf in
-  let lexsym () =   SYM.intern (u8lexeme ()) in
-  let lexqsym () =  TK.syms_of_qstring (u8lexeme ()) in
+  let lexsym ()   = SYM.intern (u8lexeme ()) in
+  let lexqsym ()  = TK.syms_of_qstring (u8lexeme ()) in
 
   let skip () = lex_haskell (next_context ()) in
 
