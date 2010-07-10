@@ -98,12 +98,13 @@ type typ =
   | KS_PLUS
   | KS_MINUS
   | KS_EXCLAM
+  | T_MODID of Symbol.t
   | T_MOD_CONSYM of (Symbol.t * Symbol.t)
   | T_MOD_CONID of (Symbol.t * Symbol.t)
-  | T_MOD_CLSID of (Symbol.t * Symbol.t)
+  (* | T_MOD_CLSID of (Symbol.t * Symbol.t) *)
   | T_CONSYM of Symbol.t
   | T_CONID of Symbol.t
-  | T_CLSID of Symbol.t
+  (* | T_CLSID of Symbol.t *)
   | T_MOD_VARSYM of (Symbol.t * Symbol.t)
   | T_MOD_VARID of (Symbol.t * Symbol.t)
   | T_VARSYM of Symbol.t
@@ -171,12 +172,13 @@ let to_string = function
   | KS_EXCLAM -> "!"
   | T_VARID(n) -> (Symbol.name n)
   | T_CONID(n) -> (Symbol.name n)
-  | T_CLSID(n) -> "<class>:" ^ (Symbol.name n)
+  (* | T_CLSID(n) -> "<class>:" ^ (Symbol.name n) *)
   | T_VARSYM(n) -> (Symbol.name n)
   | T_CONSYM(n) -> (Symbol.name n)
+  | T_MODID(n)  -> (Symbol.name n)
   | T_MOD_VARID(syms) -> syms_to_qstring syms
   | T_MOD_CONID(syms) -> syms_to_qstring syms
-  | T_MOD_CLSID(syms) -> "<class>:" ^ syms_to_qstring syms
+  (* | T_MOD_CLSID(syms) -> "<class>:" ^ syms_to_qstring syms *)
   | T_MOD_VARSYM(syms) -> syms_to_qstring syms
   | T_MOD_CONSYM(syms) -> syms_to_qstring syms
   | L_CHAR(cp) ->         show_char cp

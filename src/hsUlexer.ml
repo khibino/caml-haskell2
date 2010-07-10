@@ -347,7 +347,7 @@ let rec lex_haskell context =
   | '`'  -> tk TK.SP_B_QUOTE
   | '{'  -> tk TK.SP_LEFT_BRACE
   | '}'  -> tk TK.SP_RIGHT_BRACE
-      (** special tokens *)
+  (** special tokens *)
 
   | "case"     -> tk TK.K_CASE
   | "class"    -> tk TK.K_CLASS
@@ -371,7 +371,7 @@ let rec lex_haskell context =
   | "type"     -> tk TK.K_TYPE
   | "where"    -> tk TK.K_WHERE
   | "_"        -> tk TK.K_WILDCARD
-      (** reservedid *)
+  (** reservedid *)
 
   | ".."       -> tk TK.KS_DOTDOT
   | ":"        -> tk TK.KS_COLON
@@ -384,31 +384,34 @@ let rec lex_haskell context =
   | "@"        -> tk TK.KS_AT
   | "~"        -> tk TK.KS_TILDE
   | "=>"       -> tk TK.KS_R_W_ARROW
-      (** reservedop *)
+  (** reservedop *)
+
+  | modid '.' varid   -> tk (TK.T_MOD_VARID (lexqsym ()))
+  | modid '.' conid   -> tk (TK.T_MOD_CONID (lexqsym ()))
+  | modid '.' varsym  -> tk (TK.T_MOD_VARSYM (lexqsym ()))
+  | modid '.' consym  -> tk (TK.T_MOD_CONSYM (lexqsym ()))
+  (** qualified xx *)
+
+  | modid             -> tk (TK.T_MODID (lexsym ()))
+  (** module identifier *)
 
   | "as"              -> tk TK.K_AS  (** maybe varid *)
   | "qualified"       -> tk TK.K_QUALIFIED  (** maybe varid *)
   | "hiding"          -> tk TK.K_HIDING  (** maybe varid *)
   | varid      -> tk (TK.T_VARID (lexsym ()))
   | conid      -> tk (TK.T_CONID (lexsym ()))
-      (** identifiers or may be qualified ones *)
+  (** identifiers or may be qualified ones *)
 
   | opencom     -> lex_haskell (lex_ncomment context) (** skipping nested comment *)
   | whitespace  -> skip () (** comment begining with dashes is not varsym *)
-      (** white spaces *)
+  (** white spaces *)
 
   | plus       -> tk TK.KS_PLUS  (** maybe varsym *)
   | minus      -> tk TK.KS_MINUS (** maybe varsym *)
   | exclamation  -> tk TK.KS_EXCLAM (** maybe varsym *)
   | varsym     -> tk (TK.T_VARSYM (lexsym ()))
   | consym     -> tk (TK.T_CONSYM (lexsym ()))
-      (** symbols or may be qualified ones *)
-
-  | modid '.' varid   -> tk (TK.T_MOD_VARID (lexqsym ()))
-  | modid '.' conid   -> tk (TK.T_MOD_CONID (lexqsym ()))
-  | modid '.' varsym  -> tk (TK.T_MOD_VARSYM (lexqsym ()))
-  | modid '.' consym  -> tk (TK.T_MOD_CONSYM (lexqsym ()))
-      (** qualified xx *)
+  (** symbols or may be qualified ones *)
 
   | char      -> lex_char context
   | string    -> lex_string context

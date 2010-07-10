@@ -25,11 +25,6 @@ end
 module type LAZY_BASIC_OP2 =
 sig
   include BASIC_OP2
-
-  (* Same as EAGER_BASIC_OP2, but may change from 'e0 to 'e0 Lazy.t *)
-  (* val bind    : ('tk, 'e0) parser -> ('e0 -> ('tk, 'e1) parser) -> ('tk, 'e1) parser *)
-  (* Same as EAGER_BASIC_OP2, but may change from 'e to 'e Lazy.t *)
-  (* val return  : 'e -> ('tk, 'e) parser *)
 end
 
 module Eager2Lazy2 (EOp : EAGER_BASIC_OP2) : LAZY_BASIC_OP2
@@ -39,7 +34,7 @@ module Eager2Lazy2 (EOp : EAGER_BASIC_OP2) : LAZY_BASIC_OP2
   and  type ('e) result = ('e) EOp.result  =
 struct
   type ('tk) tklist = ('tk) EOp.tklist
-  type ('tk, 'e) parser = ('tk, 'e) EOp.parser Lazy.t
+  type ('tk, 'e) parser = ('tk, 'e) EOp.parser Lazy.t (* may change to ('tk, 'e Lazy.t) EOp.parser Lazy.t *)
   type ('e) result = ('e) EOp.result
 
   let force = Lazy.force
@@ -87,6 +82,9 @@ sig
 
   val skip   : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e0) parser
   val ( <* ) : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e0) parser
+
+  val some   : ('tk, 'e) parser -> ('tk, 'e list) parser
+  val many   : ('tk, 'e) parser -> ('tk, 'e list) parser
 
   val pred : ('tk -> bool) -> ('tk, 'tk) parser
   val just : 'tk -> ('tk, 'tk) parser
@@ -141,6 +139,17 @@ struct
     (az >>= fun a -> bz >> return a)
   let ( <* ) = skip
 
+  let cons = (fun h t -> h :: t)
+
+(*           where many_v = some_v <|> pure [] *)
+(*                 some_v = (:) <$> v <*> many_v *)
+  let call = call_parser
+  let rec many az () = call (some az) <|> pure []
+  and     some az () = cons <$> az <*> call (many az)
+
+  let many az = many az ()
+  let some az = some az ()
+
   let pred = LOp.satisfy
   let just tk = pred ((=) tk)
 
@@ -184,11 +193,6 @@ end
 module type LAZY_BASIC_OP3 =
 sig
   include BASIC_OP3
-
-  (* Same as EAGER_BASIC_OP3, but may change from 'e0 to 'e0 Lazy.t *)
-  (* val bind    : ('tk, 'e0, 'st) parser -> ('e0 -> ('tk, 'e1, 'st) parser) -> ('tk, 'e1, 'st) parser *)
-  (* Same as EAGER_BASIC_OP3, but may change from 'e to 'e Lazy.t *)
-  (* val return  : 'e -> ('tk, 'e, 'st) parser *)
 end
 
 module Eager2Lazy3 (EOp : EAGER_BASIC_OP3) : LAZY_BASIC_OP3
