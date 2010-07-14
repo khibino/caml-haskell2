@@ -34,7 +34,7 @@ let other_line_p reg0 reg1 =
 let syms_of_qstring s =
   let idx = String.rindex s '.' in
   (Symbol.intern (Str.string_before s idx),
-   Symbol.intern (Str.string_after s idx))
+   Symbol.intern (Str.string_after s (idx + 1)))
 
 let syms_to_qstring (q, n) = Symbol.name q ^ "." ^ Symbol.name n
 
@@ -98,9 +98,10 @@ type typ =
   | KS_PLUS
   | KS_MINUS
   | KS_EXCLAM
-  | T_MODID of Symbol.t
   | T_MOD_CONSYM of (Symbol.t * Symbol.t)
-  | T_MOD_CONID of (Symbol.t * Symbol.t)
+  (* | T_MODID of Symbol.t *)
+  (* | T_MOD_CONID of (Symbol.t * Symbol.t) *)
+  | T_DOT_CONID of Symbol.t
   (* | T_MOD_CLSID of (Symbol.t * Symbol.t) *)
   | T_CONSYM of Symbol.t
   | T_CONID of Symbol.t
@@ -120,6 +121,8 @@ type typ =
   | EOF
 
 type t = (typ * region)
+
+let with_region : ('a -> 'b) -> ('a * region) -> ('b * region) = Data.with_snd
 
 let to_string = function
   | SP_LEFT_PAREN  -> "("
@@ -175,9 +178,10 @@ let to_string = function
   (* | T_CLSID(n) -> "<class>:" ^ (Symbol.name n) *)
   | T_VARSYM(n) -> (Symbol.name n)
   | T_CONSYM(n) -> (Symbol.name n)
-  | T_MODID(n)  -> (Symbol.name n)
   | T_MOD_VARID(syms) -> syms_to_qstring syms
-  | T_MOD_CONID(syms) -> syms_to_qstring syms
+  (* | T_MODID(n)  -> (Symbol.name n) *)
+  (* | T_MOD_CONID(syms) -> syms_to_qstring syms *)
+  | T_DOT_CONID(n)  -> (Symbol.name n)
   (* | T_MOD_CLSID(syms) -> "<class>:" ^ syms_to_qstring syms *)
   | T_MOD_VARSYM(syms) -> syms_to_qstring syms
   | T_MOD_CONSYM(syms) -> syms_to_qstring syms
@@ -191,3 +195,4 @@ let to_string = function
   | BLK_OPEN(lv) -> Format.sprintf "{%d}" lv
   | BLK_LEVEL(lv) -> Format.sprintf "<%d>" lv
   | EOF -> "<EOF>"
+

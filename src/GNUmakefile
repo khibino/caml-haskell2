@@ -18,6 +18,7 @@ all: scratch.cma
 rebuild: clean all
 
 sources = \
+	data.ml \
 	symbol.ml \
 	token.ml \
 	lazyList.ml \
@@ -25,6 +26,8 @@ sources = \
 	hsUlexerTest.ml \
 	hsLayout.ml \
 	hsLayoutTest.ml \
+	hsSyntax.ml \
+	hsParserState.ml \
 	parser.ml \
 	simple.ml \
 	hsParser.ml \

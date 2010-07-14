@@ -2,31 +2,53 @@
 open Simple.Combinator
 
 module TK = Token
+module HSY = HsSyntax
+module HPST = HsParserState
 
 let call = call_parser
 
 let (|.|) f g x = f (g x)
 
-let sat_tk : (TK.typ -> bool) -> (TK.t, TK.t) parser =
-  fun f -> satisfy (f |.| fst)
-let just_tk eq = sat_tk ((=) eq)
+let pred_tk : (TK.typ -> bool) -> (TK.t, TK.t) parser =
+  fun f -> pred (f |.| fst)
+let just_tk eq = pred_tk ((=) eq)
+let untag_tk : (TK.typ -> 'a option) -> (TK.t, 'a * TK.region) parser =
+  fun f ->
+    untag (fun (tk, reg) ->
+      match f tk with
+        | Some v -> Some (v, reg)
+        | None   -> None)
+
+let qualid_tk f =
+  TK.with_region HSY.qualid <$> untag_tk f
+
+(* Qualified constructor or module id is ambiguous *)
+let conid = untag_tk (function | TK.T_CONID s -> Some s | _ -> None)
+let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) <|> conid
 
 (* 10.2  Lexical Syntax *)
 
 (* varsym 	 → 	( symbol{:} {symbol} ){reservedop | dashes}      *)
-let varsym = sat_tk (function
-  | (TK.T_VARSYM _ | TK.KS_PLUS | TK.KS_MINUS | TK.KS_EXCLAM) -> true
-  | _ -> false)
+let varsym = untag_tk (function
+  | TK.T_VARSYM s -> Some s
+  | TK.KS_PLUS    -> Some HSY.sym_plus
+  | TK.KS_MINUS   -> Some HSY.sym_minus
+  | TK.KS_EXCLAM  -> Some HSY.sym_exclam
+  | _             -> None)
 (* consym 	→ 	( : {symbol}){reservedop}      *)
-let consym = sat_tk (function | TK.T_CONSYM _ -> true | _ -> false)
+let consym = untag_tk (function | TK.T_CONSYM s -> Some s | _ -> None)
 
 
 (* varid 	 	 (variables)      *)
-let varid = sat_tk (function
-  | (TK.T_VARID _ | TK.K_AS | TK.K_QUALIFIED | TK.K_HIDING) -> true
-  | _ -> false)
+let varid = untag_tk (function
+  | TK.T_VARID s   -> Some s
+  | TK.K_AS        -> Some HSY.sym_as
+  | TK.K_QUALIFIED -> Some HSY.sym_qualified
+  | TK.K_HIDING    -> Some HSY.sym_hiding
+  | _              -> None)
 (* conid 		(constructors)      *)
-let conid = sat_tk (function | TK.T_CONID _ -> true | _ -> false)
+(* conid は doted_conid から使われている ↑ *)
+(* conid is used by doted_conid above *)
 (* tyvar 	→ 	varid     	(type variables) *)
 let tyvar = varid
 (* tycon 	→ 	conid     	(type constructors) *)
@@ -34,21 +56,79 @@ let tycon = conid
 (* tycls 	→ 	conid     	(type classes) *)
 let tycls = conid
 (* modid 	→ 	{conid .} conid     	(modules) *)
-let modid = sat_tk (function | TK.T_MODID _ -> true | _ -> false)
+let modid = doted_conid
 
 (* qvarid 	→ 	[ modid . ] varid      *)
-let qvarid  = sat_tk (function | TK.T_MOD_VARID _  -> true | _ -> false) <|> varid
+let qvarid  = qualid_tk (function
+  | TK.T_MOD_VARID p  -> Some p
+  | _ -> None) <|> (HPST.q_not_qual <$> varid)
 (* qconid 	→ 	[ modid . ] conid      *)
-let qconid  = sat_tk (function | TK.T_MOD_CONID _  -> true | _ -> false) <|> conid
+let qconid  = HSY.sym_to_qconid <$> doted_conid
 (* qtycon 	→ 	[ modid . ] tycon      *)
-let qtycon  = sat_tk (function | TK.T_MOD_CONID _  -> true | _ -> false) <|> tycon
+let qtycon  = qualid_tk (function
+  | TK.T_DOT_CONID s  -> Some (TK.syms_of_qstring (Symbol.name s))
+  | _ -> None)
+  <|> (HPST.q_not_qual <$> tycon)
 (* qtycls 	→ 	[ modid . ] tycls      *)
-let qtycls  = sat_tk (function | TK.T_MOD_CONID _  -> true | _ -> false) <|> tycls
+let qtycls  = qualid_tk (function
+  | TK.T_DOT_CONID s  -> Some (TK.syms_of_qstring (Symbol.name s))
+  | _ -> None)
+  <|> (HPST.q_not_qual <$> tycls)
 (* qvarsym 	→ 	[ modid . ] varsym      *)
-let qvarsym = sat_tk (function | TK.T_MOD_VARSYM _ -> true | _ -> false) <|> varsym
+let qvarsym = qualid_tk (function
+  | TK.T_MOD_VARSYM p -> Some p
+  | _ -> None) <|> (HPST.q_not_qual <$> varsym)
 (* qconsym 	→ 	[ modid . ] consym      *)
-let qconsym = sat_tk (function | TK.T_MOD_CONSYM _ -> true | _ -> false) <|> consym
+let qconsym = qualid_tk (function
+  | TK.T_MOD_CONSYM p -> Some p
+  | _ -> None)
+  <|> (HPST.q_not_qual <$> consym)
 
+let integer = pred_tk (function | TK.L_INTEGER _ -> true | _ -> false)
+(* let  *)
+
+(* 10.5  Context-Free Syntax
+   -- 変数とシンボルの定義は他から参照されるので先に定義 -- 
+   -- variable and symbol section -- 
+*)
+
+let parened p = just_tk TK.SP_LEFT_PAREN *> p <* just_tk TK.SP_RIGHT_PAREN
+let backquoted p = just_tk TK.SP_B_QUOTE *> p <* just_tk TK.SP_B_QUOTE
+
+(* var 	→ 	varid | ( varsym )     	(variable) *)
+let var = varid <|> parened varsym
+
+(* qvar 	→ 	qvarid | ( qvarsym )     	(qualified variable) *)
+let qvar = qvarid <|> parened qvarsym
+
+(* con 	→ 	conid | ( consym )     	(constructor) *)
+let con = conid <|> parened consym
+
+let gconsym = (HSY.tk_id_colon <$> just_tk TK.KS_COLON) <|> qconsym
+(* qcon 	→ 	qconid | ( gconsym )     	(qualified constructor) *)
+let qcon = qconid <|> parened gconsym
+
+(* varop 	→ 	varsym | `  varid `     	(variable operator) *)
+let varop = varsym <|> backquoted varid
+(* qvarop 	→ 	qvarsym | `  qvarid `     	(qualified variable operator) *)
+let qvarop = qvarsym <|> backquoted qvarid
+(* conop 	→ 	consym | `  conid `     	(constructor operator) *)
+let conop = consym <|> backquoted conid
+(* qconop 	→ 	gconsym | `  qconid `     	(qualified constructor operator) *)
+let qconop = gconsym <|> backquoted qconid
+(* op 	→ 	varop | conop     	(operator) *)
+let op = varop <|> conop
+(* qop 	→ 	qvarop | qconop     	(qualified operator) *)
+let qop = qvarop <|> qconop
+(* gconsym 	→ 	: | qconsym      *)
+(* gconsym は qcon から使われている ↑ *)
+(* gconsym is used by qcon above *)
+ 
+(* gcon 	→ 	()      *)
+(* 	| 	[]      *)
+(* 	| 	(,{,})      *)
+(* 	| 	qcon      *)
+(* let gcon = parened  *)
 
 (* 10.5  Context-Free Syntax *)
 
@@ -205,6 +285,7 @@ let qconsym = sat_tk (function | TK.T_MOD_CONSYM _ -> true | _ -> false) <|> con
 (* 	| 	( qop⟨-⟩ infixexp )     	(right section) *)
 (* 	| 	qcon { fbind1 , … , fbindn }     	(labeled construction, n ≥ 0) *)
 (* 	| 	aexp⟨qcon⟩ { fbind1 , … , fbindn }     	(labeled update, n  ≥  1) *)
+(* let aexp () = qvar <|> *)
  
 (* qual 	→ 	pat <- exp     	(generator) *)
 (* 	| 	let decls     	(local declaration) *)
@@ -244,26 +325,8 @@ let qconsym = sat_tk (function | TK.T_MOD_CONSYM _ -> true | _ -> false) <|> con
 (* 	| 	~ apat     	(irrefutable pattern) *)
  
 (* fpat 	→ 	qvar = pat      *)
- 
-(* gcon 	→ 	()      *)
-(* 	| 	[]      *)
-(* 	| 	(,{,})      *)
-(* 	| 	qcon      *)
- 
-(* var 	→ 	varid | ( varsym )     	(variable) *)
-(* qvar 	→ 	qvarid | ( qvarsym )     	(qualified variable) *)
-(* con 	→ 	conid | ( consym )     	(constructor) *)
-(* qcon 	→ 	qconid | ( gconsym )     	(qualified constructor) *)
-(* varop 	→ 	varsym | `  varid `     	(variable operator) *)
-(* qvarop 	→ 	qvarsym | `  qvarid `     	(qualified variable operator) *)
-(* conop 	→ 	consym | `  conid `     	(constructor operator) *)
-(* qconop 	→ 	gconsym | `  qconid `     	(qualified constructor operator) *)
-(* op 	→ 	varop | conop     	(operator) *)
-(* qop 	→ 	qvarop | qconop     	(qualified operator) *)
-(* gconsym 	→ 	: | qconsym      *)
 
-let any    = sat_tk (fun _ -> true)
+let any    = pred_tk (fun _ -> true)
 
 let test_s0 = any *>
-  many (qvarid <|> qconid <|> qtycon
-    <|> qtycls <|> qvarsym <|> qconsym <|> modid)
+  some (qvar <|> gconsym <|> qconop <|> qvarop)

@@ -1,0 +1,88 @@
+
+module A = Array
+
+
+module SYM = Symbol
+module TK = Token
+
+type sp_con =
+  | Colon
+  | Unit
+  | NullList
+  | Tuple of int
+
+let sp_con_str = function
+  | Colon    -> ":"
+  | Unit     -> "()"
+  | NullList -> "[]"
+  | Tuple i  -> ("(" ^ (A.fold_left (^) "" (A.make (i-1) ",")) ^ ")")
+
+type qualifier =
+  | Unq of SYM.t (* unqualified id has scope module name *)
+  | Q   of SYM.t
+
+type short =
+  | N  of SYM.t
+  | Sp of sp_con
+
+type id = {
+  short : short;
+  qual  : qualifier;
+}
+
+let short id = id.short
+let qual  id = id.qual
+
+let short_sym id =
+  match short id with
+    | N n -> n
+    | Sp sp -> SYM.intern (sp_con_str sp)
+
+let qual_sym id =
+  match qual id with
+    | Q m | Unq m -> m
+
+let pair_sym id =
+  (qual_sym id, short_sym id)
+
+let long_name id =
+  (SYM.name (qual_sym id)) ^ "."
+  ^ (SYM.name (short_sym id))
+
+let long_sym id =
+  SYM.intern (long_name id)
+
+let to_sym id =
+  match qual id with
+    | Q (_) -> long_sym id
+    | _ -> short_sym id
+
+
+let qualid (q, n) = {
+  short = N n;
+  qual  = Q q;
+}
+
+let unqualid (n, m) = {
+  short = N   n;
+  qual  = Unq m;
+}
+
+let sym_to_qconid = TK.with_region (fun qs -> qualid (TK.syms_of_qstring (SYM.name qs)))
+
+let sym_prelude = SYM.intern "Prelude"
+
+let sym_nul    = SYM.intern ""
+let sym_plus   = SYM.intern "+"
+let sym_minus  = SYM.intern "-"
+let sym_exclam = SYM.intern "!"
+
+let sym_as        = SYM.intern "as"
+let sym_qualified = SYM.intern "qualified"
+let sym_hiding    = SYM.intern "hiding"
+
+let id_colon = unqualid (sym_prelude, SYM.intern ":")
+
+let tk_id_colon = TK.with_region (function
+  | TK.KS_COLON -> id_colon
+  | _           -> failwith "Not KS_COLON token!")

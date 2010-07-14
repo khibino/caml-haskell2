@@ -387,13 +387,10 @@ let rec lex_haskell context =
   (** reservedop *)
 
   | modid '.' varid   -> tk (TK.T_MOD_VARID (lexqsym ()))
-  | modid '.' conid   -> tk (TK.T_MOD_CONID (lexqsym ()))
+  | modid '.' conid   -> tk (TK.T_DOT_CONID (lexsym ()))
   | modid '.' varsym  -> tk (TK.T_MOD_VARSYM (lexqsym ()))
   | modid '.' consym  -> tk (TK.T_MOD_CONSYM (lexqsym ()))
   (** qualified xx *)
-
-  | modid             -> tk (TK.T_MODID (lexsym ()))
-  (** module identifier *)
 
   | "as"              -> tk TK.K_AS  (** maybe varid *)
   | "qualified"       -> tk TK.K_QUALIFIED  (** maybe varid *)

@@ -88,6 +88,7 @@ sig
 
   val pred : ('tk -> bool) -> ('tk, 'tk) parser
   val just : 'tk -> ('tk, 'tk) parser
+  val untag : ('tk -> 'e option) -> ('tk, 'e) parser
 
   val tokens : (unit -> 'a) -> ('a) tklist
 
@@ -152,6 +153,14 @@ struct
 
   let pred = LOp.satisfy
   let just tk = pred ((=) tk)
+  let untag f =
+    (fun i -> match f i with
+      | Some v -> v
+      | None   -> failwith "")
+      <$>
+      pred (fun i -> match f i with
+        | Some _ -> true
+        | None   -> false)
 
   let tokens = LOp.tokens
 
