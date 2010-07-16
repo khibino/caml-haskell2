@@ -31,6 +31,9 @@ let offset region = region.start_p.col
 let other_line_p reg0 reg1 =
   (reg1.start_p.line - reg0.end_p.line) > 0
 
+let sandwich_tk_with_region (_, reg0) tk (_, reg1) =
+  (tk, region reg0.start_p reg1.end_p)
+
 let syms_of_qstring s =
   let idx = String.rindex s '.' in
   (Symbol.intern (Str.string_before s idx),

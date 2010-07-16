@@ -58,17 +58,17 @@ let to_sym id =
     | _ -> short_sym id
 
 
-let qualid (q, n) = {
+let qual_id (q, n) = {
   short = N n;
   qual  = Q q;
 }
 
-let unqualid (n, m) = {
+let unqual_id (n, m) = {
   short = N   n;
   qual  = Unq m;
 }
 
-let sym_to_qconid = TK.with_region (fun qs -> qualid (TK.syms_of_qstring (SYM.name qs)))
+let sym_to_qconid = TK.with_region (fun qs -> qual_id (TK.syms_of_qstring (SYM.name qs)))
 
 let sym_prelude = SYM.intern "Prelude"
 
@@ -81,8 +81,23 @@ let sym_as        = SYM.intern "as"
 let sym_qualified = SYM.intern "qualified"
 let sym_hiding    = SYM.intern "hiding"
 
-let id_colon = unqualid (sym_prelude, SYM.intern ":")
+let special_id spc = {
+  short = Sp spc;
+  qual  = Unq sym_prelude;
+}
+
+let id_colon = special_id Colon
+let id_unit  = special_id Unit
+let id_null_list = special_id NullList
+let id_tuple i   = special_id (Tuple i)
 
 let tk_id_colon = TK.with_region (function
   | TK.KS_COLON -> id_colon
   | _           -> failwith "Not KS_COLON token!")
+
+
+type lit =
+  | Char of int
+  | Str of int array
+  | Int of int64
+  | Flo of float

@@ -19,14 +19,17 @@ let untag_tk : (TK.typ -> 'a option) -> (TK.t, 'a * TK.region) parser =
         | Some v -> Some (v, reg)
         | None   -> None)
 
-let qualid_tk f =
-  TK.with_region HSY.qualid <$> untag_tk f
+let qual_id_tk f =
+  TK.with_region HSY.qual_id <$> untag_tk f
 
 (* Qualified constructor or module id is ambiguous *)
 let conid = untag_tk (function | TK.T_CONID s -> Some s | _ -> None)
 let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) <|> conid
 
 (* 10.2  Lexical Syntax *)
+
+(* literal 	 → 	integer | float | char | string      *)
+(* let literal *)
 
 (* varsym 	 → 	( symbol{:} {symbol} ){reservedop | dashes}      *)
 let varsym = untag_tk (function
@@ -59,27 +62,27 @@ let tycls = conid
 let modid = doted_conid
 
 (* qvarid 	→ 	[ modid . ] varid      *)
-let qvarid  = qualid_tk (function
+let qvarid : (TK.t, HSY.id * TK.region) parser  = qual_id_tk (function
   | TK.T_MOD_VARID p  -> Some p
   | _ -> None) <|> (HPST.q_not_qual <$> varid)
 (* qconid 	→ 	[ modid . ] conid      *)
 let qconid  = HSY.sym_to_qconid <$> doted_conid
 (* qtycon 	→ 	[ modid . ] tycon      *)
-let qtycon  = qualid_tk (function
+let qtycon  = qual_id_tk (function
   | TK.T_DOT_CONID s  -> Some (TK.syms_of_qstring (Symbol.name s))
   | _ -> None)
   <|> (HPST.q_not_qual <$> tycon)
 (* qtycls 	→ 	[ modid . ] tycls      *)
-let qtycls  = qualid_tk (function
+let qtycls  = qual_id_tk (function
   | TK.T_DOT_CONID s  -> Some (TK.syms_of_qstring (Symbol.name s))
   | _ -> None)
   <|> (HPST.q_not_qual <$> tycls)
 (* qvarsym 	→ 	[ modid . ] varsym      *)
-let qvarsym = qualid_tk (function
+let qvarsym = qual_id_tk (function
   | TK.T_MOD_VARSYM p -> Some p
   | _ -> None) <|> (HPST.q_not_qual <$> varsym)
 (* qconsym 	→ 	[ modid . ] consym      *)
-let qconsym = qualid_tk (function
+let qconsym = qual_id_tk (function
   | TK.T_MOD_CONSYM p -> Some p
   | _ -> None)
   <|> (HPST.q_not_qual <$> consym)
@@ -92,8 +95,16 @@ let integer = pred_tk (function | TK.L_INTEGER _ -> true | _ -> false)
    -- variable and symbol section -- 
 *)
 
-let parened p = just_tk TK.SP_LEFT_PAREN *> p <* just_tk TK.SP_RIGHT_PAREN
-let backquoted p = just_tk TK.SP_B_QUOTE *> p <* just_tk TK.SP_B_QUOTE
+let form_between a b p = TK.sandwich_tk_with_region <$> a <*> p <*> b
+let between a b = form_between a b |.| ((<$>) fst)
+
+let form_parened    p = form_between (just_tk TK.SP_LEFT_PAREN)   (just_tk TK.SP_RIGHT_PAREN)   p
+let form_bracketed  p = form_between (just_tk TK.SP_LEFT_BRACKET) (just_tk TK.SP_RIGHT_BRACKET) p
+let form_backquoted p = form_between (just_tk TK.SP_B_QUOTE)      (just_tk TK.SP_B_QUOTE)       p
+
+let parened    p = form_parened    ((lift_a fst) p)
+let bracketed  p = form_bracketed  ((lift_a fst) p)
+let backquoted p = form_backquoted ((lift_a fst) p)
 
 (* var 	→ 	varid | ( varsym )     	(variable) *)
 let var = varid <|> parened varsym
@@ -128,7 +139,11 @@ let qop = qvarop <|> qconop
 (* 	| 	[]      *)
 (* 	| 	(,{,})      *)
 (* 	| 	qcon      *)
-(* let gcon = parened  *)
+let rec commas () = (just_tk TK.SP_COMMA *> (succ <$> call commas)) <|> pure 0
+let gcon =
+  form_parened (pure HSY.id_unit) <|> form_bracketed (pure HSY.id_null_list)
+    <|> form_parened (HSY.id_tuple <$> (call commas))
+      <|> qcon
 
 (* 10.5  Context-Free Syntax *)
 
@@ -285,7 +300,7 @@ let qop = qvarop <|> qconop
 (* 	| 	( qop⟨-⟩ infixexp )     	(right section) *)
 (* 	| 	qcon { fbind1 , … , fbindn }     	(labeled construction, n ≥ 0) *)
 (* 	| 	aexp⟨qcon⟩ { fbind1 , … , fbindn }     	(labeled update, n  ≥  1) *)
-(* let aexp () = qvar <|> *)
+let aexp () = qvar <|> gcon
  
 (* qual 	→ 	pat <- exp     	(generator) *)
 (* 	| 	let decls     	(local declaration) *)

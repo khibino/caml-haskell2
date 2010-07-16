@@ -12,5 +12,5 @@ let begin_parse_module modid =
 let current_modid () =
   Stack.top theModidStack
 
-let q_not_qual = TK.with_region (fun s -> HSY.unqualid (current_modid (), s))
+let q_not_qual = TK.with_region (fun s -> HSY.unqual_id (current_modid (), s))
 
