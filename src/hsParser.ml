@@ -29,7 +29,12 @@ let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) 
 (* 10.2  Lexical Syntax *)
 
 (* literal 	 → 	integer | float | char | string      *)
-(* let literal *)
+let literal = untag_tk (function
+  | TK.L_CHAR cp   -> Some (HSY.Char cp)
+  | TK.L_STRING ca -> Some (HSY.Str ca)
+  | TK.L_INTEGER i -> Some (HSY.Int i)
+  | TK.L_FLOAT f   -> Some (HSY.Flo f)
+  | _              -> None)
 
 (* varsym 	 → 	( symbol{:} {symbol} ){reservedop | dashes}      *)
 let varsym = untag_tk (function
@@ -300,7 +305,7 @@ let gcon =
 (* 	| 	( qop⟨-⟩ infixexp )     	(right section) *)
 (* 	| 	qcon { fbind1 , … , fbindn }     	(labeled construction, n ≥ 0) *)
 (* 	| 	aexp⟨qcon⟩ { fbind1 , … , fbindn }     	(labeled update, n  ≥  1) *)
-let aexp () = qvar <|> gcon
+let aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> literal)
  
 (* qual 	→ 	pat <- exp     	(generator) *)
 (* 	| 	let decls     	(local declaration) *)
@@ -345,3 +350,7 @@ let any    = pred_tk (fun _ -> true)
 
 let test_s0 = any *>
   some (qvar <|> gconsym <|> qconop <|> qvarop)
+
+(*  *)
+let test_s1 : (TK.t, (unit HSY.aexp * TK.region) list) parser = any *>
+  some (call aexp)

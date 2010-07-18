@@ -98,6 +98,33 @@ let tk_id_colon = TK.with_region (function
 
 type lit =
   | Char of int
-  | Str of int array
-  | Int of int64
-  | Flo of float
+  | Str  of int array
+  | Int  of int64
+  | Flo  of float
+
+
+type 'exp aexp =
+  | Var of id
+  | Con of id
+  | Lit of lit
+  | Paren of 'exp
+  | Tuple of 'exp list
+  | List of 'exp list
+  (* | Comp (exp, qual list) (* list comprehension *) *)
+  (* |  (* left section*) *)
+  (* |  (* right section*) *)
+  (* | (* labeled construction *) *)
+  (* | (* labeled update *) *)
+
+let var = TK.with_region (fun id -> Var id)
+let con = TK.with_region (fun id -> Con id)
+let lit = TK.with_region (fun lit -> Lit lit)
+
+(* 以下の実装のように引数を一つづつ部分適用するのは効率が良くないはず。
+ * 一度に複数の引数を適用するように変更するかも。
+ *)
+type 'exp fexp =
+  | FApp of ('exp fexp * 'exp aexp)
+  | AExp of 'exp aexp
+
+(* type 'exp lexp *)
