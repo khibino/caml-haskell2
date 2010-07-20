@@ -1,6 +1,6 @@
 
 module A = Array
-
+module L = List
 
 module SYM = Symbol
 module TK = Token
@@ -126,5 +126,9 @@ let lit = TK.with_region (fun lit -> Lit lit)
 type 'exp fexp =
   | FApp of ('exp fexp * 'exp aexp)
   | AExp of 'exp aexp
+
+let fexp_of_aexp_list = function
+  | []  -> failwith "Something wrong. fexp parser is broken?"
+  | e :: es  -> L.fold_left (fun fexp e -> FApp (fexp, e)) (AExp e) es
 
 (* type 'exp lexp *)

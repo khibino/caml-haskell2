@@ -1,6 +1,8 @@
 
 open Simple.Combinator
 
+module L = List
+
 module TK = Token
 module HSY = HsSyntax
 module HPST = HsParserState
@@ -291,7 +293,10 @@ let gcon =
 (* 	| 	case exp of { alts }     	(case expression) *)
 (* 	| 	do { stmts }     	(do expression) *)
 (* 	| 	fexp      *)
+(* let rec lexp () = call fexp *)
+
 (* fexp 	→ 	[fexp] aexp     	(function application) *)
+let rec fexp () = HSY.fexp_of_aexp_list <$> some (fst <$> call aexp)
  
 (* aexp 	→ 	qvar     	(variable) *)
 (* 	| 	gcon     	(general constructor) *)
@@ -305,7 +310,7 @@ let gcon =
 (* 	| 	( qop⟨-⟩ infixexp )     	(right section) *)
 (* 	| 	qcon { fbind1 , … , fbindn }     	(labeled construction, n ≥ 0) *)
 (* 	| 	aexp⟨qcon⟩ { fbind1 , … , fbindn }     	(labeled update, n  ≥  1) *)
-let aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> literal)
+and     aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> literal)
  
 (* qual 	→ 	pat <- exp     	(generator) *)
 (* 	| 	let decls     	(local declaration) *)
@@ -352,5 +357,5 @@ let test_s0 = any *>
   some (qvar <|> gconsym <|> qconop <|> qvarop)
 
 (*  *)
-let test_s1 : (TK.t, (unit HSY.aexp * TK.region) list) parser = any *>
-  some (call aexp)
+let test_s1 : (TK.t, unit HSY.fexp) parser =
+  (fst <$> any) *> call fexp
