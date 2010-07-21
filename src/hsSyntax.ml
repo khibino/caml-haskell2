@@ -102,6 +102,16 @@ type lit =
   | Int  of int64
   | Flo  of float
 
+type typ = unit
+type cls = unit
+
+type context = cls list
+
+type apat = unit
+
+type 'exp alt = unit
+type 'exp stmt = unit
+type 'exp decl = unit
 
 type 'exp aexp =
   | Var of id
@@ -131,4 +141,17 @@ let fexp_of_aexp_list = function
   | []  -> failwith "Something wrong. fexp parser is broken?"
   | e :: es  -> L.fold_left (fun fexp e -> FApp (fexp, e)) (AExp e) es
 
-(* type 'exp lexp *)
+type 'exp lexp =
+  | Lambda of (apat list * 'exp)
+  | Let    of ('exp decl list * 'exp)
+  | If     of ('exp * 'exp * 'exp)
+  | Case   of ('exp * 'exp alt list)
+  | Do     of 'exp stmt list
+  | FExp   of 'exp fexp
+
+type 'exp infixexp =
+  | OpApp of ('exp lexp * id * 'exp infixexp)
+  | Neg   of 'exp infixexp
+  | LExp  of 'exp lexp
+
+type exp = InfExp of (exp infixexp * (context option * typ) option)
