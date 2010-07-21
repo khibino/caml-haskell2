@@ -109,49 +109,58 @@ type context = cls list
 
 type apat = unit
 
-type 'exp alt = unit
-type 'exp stmt = unit
-type 'exp decl = unit
+type 'infexp exp = 'infexp * (context option * typ) option
 
-type 'exp aexp =
-  | Var of id
-  | Con of id
-  | Lit of lit
-  | Paren of 'exp
-  | Tuple of 'exp list
-  | List of 'exp list
-  (* | Comp (exp, qual list) (* list comprehension *) *)
-  (* |  (* left section*) *)
-  (* |  (* right section*) *)
-  (* | (* labeled construction *) *)
-  (* | (* labeled update *) *)
+type 'infexp qual  = unit
+type 'infexp fbind = unit
+type 'infexp alt   = unit
+type 'infexp stmt  = unit
+type 'infexp decl  = unit
+
+type 'infexp do_stmts = 'infexp stmt list * 'infexp exp
+
+let do_stmts sl exp = (sl, exp)
+
+type 'infexp aexp =
+  | Var    of id
+  | Con    of id
+  | Lit    of lit
+  | Paren  of 'infexp exp
+  | Tuple  of 'infexp exp list
+  | List   of 'infexp exp list
+  | Comp   of 'infexp exp * 'infexp qual list (* list comprehension *)
+  | LeftS  of 'infexp * id (* left section*)
+  | RightS of id * 'infexp (* right section*)
+  | ConsL  of id * 'infexp fbind list (* labeled construction *)
+  | UpdL   of id * 'infexp fbind list (* labeled update *)
 
 let var = TK.with_region (fun id -> Var id)
 let con = TK.with_region (fun id -> Con id)
 let lit = TK.with_region (fun lit -> Lit lit)
 
+
 (* 以下の実装のように引数を一つづつ部分適用するのは効率が良くないはず。
  * 一度に複数の引数を適用するように変更するかも。
  *)
-type 'exp fexp =
-  | FApp of ('exp fexp * 'exp aexp)
-  | AExp of 'exp aexp
+type 'infexp fexp =
+  | FApp of ('infexp fexp * 'infexp aexp)
+  | AExp of 'infexp aexp
 
 let fexp_of_aexp_list = function
   | []  -> failwith "Something wrong. fexp parser is broken?"
   | e :: es  -> L.fold_left (fun fexp e -> FApp (fexp, e)) (AExp e) es
 
-type 'exp lexp =
-  | Lambda of (apat list * 'exp)
-  | Let    of ('exp decl list * 'exp)
-  | If     of ('exp * 'exp * 'exp)
-  | Case   of ('exp * 'exp alt list)
-  | Do     of 'exp stmt list
-  | FExp   of 'exp fexp
+type 'infexp lexp =
+  | Lambda of apat list * 'infexp exp
+  | Let    of 'infexp decl list * 'infexp exp
+  | If     of 'infexp exp * 'infexp exp * 'infexp exp
+  | Case   of 'infexp exp * 'infexp alt list
+  | Do     of 'infexp do_stmts
+  | FExp   of 'infexp fexp
 
-type 'exp infixexp =
-  | OpApp of ('exp lexp * id * 'exp infixexp)
-  | Neg   of 'exp infixexp
-  | LExp  of 'exp lexp
+let fexp fexp = FExp fexp
 
-type exp = InfExp of (exp infixexp * (context option * typ) option)
+type infexp =
+  | OpApp of infexp lexp * id * infexp
+  | Neg   of infexp
+  | LExp  of infexp lexp

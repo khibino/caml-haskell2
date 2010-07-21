@@ -24,6 +24,8 @@ let untag_tk : (TK.typ -> 'a option) -> (TK.t, 'a * TK.region) parser =
 let qual_id_tk f =
   TK.with_region HSY.qual_id <$> untag_tk f
 
+let unit_p : (TK.t, unit) parser = pure ()
+
 (* Qualified constructor or module id is ambiguous *)
 let conid = untag_tk (function | TK.T_CONID s -> Some s | _ -> None)
 let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) <|> conid
@@ -152,6 +154,61 @@ let gcon =
     <|> form_parened (HSY.id_tuple <$> (call commas))
       <|> qcon
 
+(* 10.5  Context-Free Syntax
+   -- expression から参照される要素を先に定義 -- 
+   -- define elements which referred by expression element. -- 
+*)
+
+(* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
+(* decl 	→ 	gendecl      *)
+(* 	| 	(funlhs | pat) rhs      *)
+
+ 
+(* qual 	→ 	pat <- exp     	(generator) *)
+(* 	| 	let decls     	(local declaration) *)
+(* 	| 	exp     	(guard) *)
+let qual = unit_p
+ 
+(* alts 	→ 	alt1 ; … ; altn     	(n ≥ 1) *)
+(* alt 	→ 	pat -> exp [where decls]      *)
+(* 	| 	pat gdpat [where decls]      *)
+(* 	| 	    	(empty alternative) *)
+let alt = unit_p
+ 
+(* gdpat 	→ 	guards -> exp [ gdpat ]      *)
+ 
+(* stmts 	→ 	stmt1 … stmtn exp [;]     	(n ≥ 0) *)
+(* stmt 	→ 	exp ;      *)
+(* 	| 	pat <- exp ;      *)
+(* 	| 	let decls ;      *)
+(* 	| 	;     	(empty statement) *)
+let stmt = unit_p
+ 
+(* fbind 	→ 	qvar = exp      *)
+let fbind = unit_p
+ 
+(* pat 	→ 	lpat qconop pat     	(infix constructor) *)
+(* 	| 	- (integer | float)     	(negative literal) *)
+(* 	| 	lpat      *)
+ 
+(* lpat 	→ 	apat      *)
+(* 	| 	- (integer | float)     	(negative literal) *)
+(* 	| 	gcon apat1 … apatk     	(arity gcon  =  k, k ≥ 1) *)
+ 
+(* apat 	→ 	var [ @ apat]     	(as pattern) *)
+(* 	| 	gcon     	(arity gcon  =  0) *)
+(* 	| 	qcon { fpat1 , … , fpatk }     	(labeled pattern, k ≥ 0) *)
+(* 	| 	literal      *)
+(* 	| 	_     	(wildcard) *)
+(* 	| 	( pat )     	(parenthesized pattern) *)
+(* 	| 	( pat1 , … , patk )     	(tuple pattern, k ≥ 2) *)
+(* 	| 	[ pat1 , … , patk ]     	(list pattern, k ≥ 1) *)
+(* 	| 	~ apat     	(irrefutable pattern) *)
+ 
+(* fpat 	→ 	qvar = pat      *)
+
+
+
 (* 10.5  Context-Free Syntax *)
 
 (* module 	 → 	module modid [exports] where body       *)
@@ -189,10 +246,6 @@ let gcon =
 (* 	| 	default (type1 , … , typen)     	(n ≥ 0) *)
 (* 	| 	foreign fdecl      *)
 (* 	| 	decl      *)
- 
-(* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
-(* decl 	→ 	gendecl      *)
-(* 	| 	(funlhs | pat) rhs      *)
  
 (* cdecls 	→ 	{ cdecl1 ; … ; cdecln }     	(n ≥ 0) *)
 (* cdecl 	→ 	gendecl      *)
@@ -282,6 +335,7 @@ let gcon =
  
 (* exp 	→ 	infixexp :: [context =>] type     	(expression type signature) *)
 (* 	| 	infixexp      *)
+(* let  exp () = unit_p *)
  
 (* infixexp 	→ 	lexp qop infixexp     	(infix operator application) *)
 (* 	| 	- infixexp     	(prefix negation) *)
@@ -293,10 +347,10 @@ let gcon =
 (* 	| 	case exp of { alts }     	(case expression) *)
 (* 	| 	do { stmts }     	(do expression) *)
 (* 	| 	fexp      *)
-(* let rec lexp () = call fexp *)
+let rec lexp () = HSY.fexp <$> call fexp
 
 (* fexp 	→ 	[fexp] aexp     	(function application) *)
-let rec fexp () = HSY.fexp_of_aexp_list <$> some (fst <$> call aexp)
+and     fexp () = HSY.fexp_of_aexp_list <$> some (fst <$> call aexp)
  
 (* aexp 	→ 	qvar     	(variable) *)
 (* 	| 	gcon     	(general constructor) *)
@@ -311,46 +365,9 @@ let rec fexp () = HSY.fexp_of_aexp_list <$> some (fst <$> call aexp)
 (* 	| 	qcon { fbind1 , … , fbindn }     	(labeled construction, n ≥ 0) *)
 (* 	| 	aexp⟨qcon⟩ { fbind1 , … , fbindn }     	(labeled update, n  ≥  1) *)
 and     aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> literal)
- 
-(* qual 	→ 	pat <- exp     	(generator) *)
-(* 	| 	let decls     	(local declaration) *)
-(* 	| 	exp     	(guard) *)
- 
-(* alts 	→ 	alt1 ; … ; altn     	(n ≥ 1) *)
-(* alt 	→ 	pat -> exp [where decls]      *)
-(* 	| 	pat gdpat [where decls]      *)
-(* 	| 	    	(empty alternative) *)
- 
-(* gdpat 	→ 	guards -> exp [ gdpat ]      *)
- 
-(* stmts 	→ 	stmt1 … stmtn exp [;]     	(n ≥ 0) *)
-(* stmt 	→ 	exp ;      *)
-(* 	| 	pat <- exp ;      *)
-(* 	| 	let decls ;      *)
-(* 	| 	;     	(empty statement) *)
- 
-(* fbind 	→ 	qvar = exp      *)
- 
-(* pat 	→ 	lpat qconop pat     	(infix constructor) *)
-(* 	| 	- (integer | float)     	(negative literal) *)
-(* 	| 	lpat      *)
- 
-(* lpat 	→ 	apat      *)
-(* 	| 	- (integer | float)     	(negative literal) *)
-(* 	| 	gcon apat1 … apatk     	(arity gcon  =  k, k ≥ 1) *)
- 
-(* apat 	→ 	var [ @ apat]     	(as pattern) *)
-(* 	| 	gcon     	(arity gcon  =  0) *)
-(* 	| 	qcon { fpat1 , … , fpatk }     	(labeled pattern, k ≥ 0) *)
-(* 	| 	literal      *)
-(* 	| 	_     	(wildcard) *)
-(* 	| 	( pat )     	(parenthesized pattern) *)
-(* 	| 	( pat1 , … , patk )     	(tuple pattern, k ≥ 2) *)
-(* 	| 	[ pat1 , … , patk ]     	(list pattern, k ≥ 1) *)
-(* 	| 	~ apat     	(irrefutable pattern) *)
- 
-(* fpat 	→ 	qvar = pat      *)
 
+(* and     stmts = HSY.do_stmts <$> many stmt <*> call exp *)
+ 
 let any    = pred_tk (fun _ -> true)
 
 let test_s0 = any *>
