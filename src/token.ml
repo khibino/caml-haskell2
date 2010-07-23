@@ -31,8 +31,16 @@ let offset region = region.start_p.col
 let other_line_p reg0 reg1 =
   (reg1.start_p.line - reg0.end_p.line) > 0
 
-let sandwich_tk_with_region (_, reg0) tk (_, reg1) =
-  (tk, region reg0.start_p reg1.end_p)
+let cover_region reg0 reg1 = region reg0.start_p reg1.end_p
+
+let form_prepend (_, reg0) (form, reg1) =
+  (form, cover_region reg0 reg1)
+
+let form_append (form, reg0) (_, reg1) =
+  (form, cover_region reg0 reg1)
+
+let form_between (_, reg0) form (_, reg1) =
+  (form, cover_region reg0 reg1)
 
 let syms_of_qstring s =
   let idx = String.rindex s '.' in

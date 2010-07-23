@@ -86,6 +86,8 @@ sig
   val some   : ('tk, 'e) parser -> ('tk, 'e list) parser
   val many   : ('tk, 'e) parser -> ('tk, 'e list) parser
 
+  val optional : ('tk, 'e) parser -> ('tk, 'e option) parser
+
   val pred : ('tk -> bool) -> ('tk, 'tk) parser
   val just : 'tk -> ('tk, 'tk) parser
   val untag : ('tk -> 'e option) -> ('tk, 'e) parser
@@ -150,6 +152,8 @@ struct
 
   let many az = many az ()
   let some az = some az ()
+
+  let optional az = ((fun x -> Some x) <$> az) <|> pure None
 
   let pred = LOp.satisfy
   let just tk = pred ((=) tk)

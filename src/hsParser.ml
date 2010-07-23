@@ -24,7 +24,12 @@ let untag_tk : (TK.typ -> 'a option) -> (TK.t, 'a * TK.region) parser =
 let qual_id_tk f =
   TK.with_region HSY.qual_id <$> untag_tk f
 
-let unit_p : (TK.t, unit) parser = pure ()
+let pos_dummy = TK.pos (-1) (-1)
+let region_dummy = TK.region pos_dummy pos_dummy
+
+let pos_fix_later = pos_dummy
+let region_fix_later = TK.region pos_fix_later pos_fix_later
+let p_fix_later : (TK.t, unit * TK.region) parser = pure ((), region_fix_later)
 
 (* Qualified constructor or module id is ambiguous *)
 let conid = untag_tk (function | TK.T_CONID s -> Some s | _ -> None)
@@ -40,7 +45,7 @@ let literal = untag_tk (function
   | TK.L_FLOAT f   -> Some (HSY.Flo f)
   | _              -> None)
 
-(* varsym 	 → 	( symbol{:} {symbol} ){reservedop | dashes}      *)
+(* varsym 	 → 	( symbol⟨:⟩ {symbol} ){reservedop | dashes}      *)
 let varsym = untag_tk (function
   | TK.T_VARSYM s -> Some s
   | TK.KS_PLUS    -> Some HSY.sym_plus
@@ -104,8 +109,21 @@ let integer = pred_tk (function | TK.L_INTEGER _ -> true | _ -> false)
    -- variable and symbol section -- 
 *)
 
-let form_between a b p = TK.sandwich_tk_with_region <$> a <*> p <*> b
-let between a b = form_between a b |.| ((<$>) fst)
+let form_prepend a p = TK.form_prepend <$> a <*> p
+let form_append  p a = TK.form_append  <$> p <*> a
+
+let form_between a b p = TK.form_between <$> a <*> p <*> b
+let between a b = form_between a b |.| (lift_a fst)
+
+let cons = (fun a d -> a :: d)
+
+let list_form pl =
+  (function
+    | []         -> ([], region_dummy)
+    (* failwith "Null parsers. Syntax definition bug!" *)
+    | [(e, reg)] -> ([e], reg)
+    | (e :: _) as es -> TK.form_between e (L.map fst es) (L.hd (Data.init es)))
+  <$> pl
 
 let form_parened    p = form_between (just_tk TK.SP_LEFT_PAREN)   (just_tk TK.SP_RIGHT_PAREN)   p
 let form_bracketed  p = form_between (just_tk TK.SP_LEFT_BRACKET) (just_tk TK.SP_RIGHT_BRACKET) p
@@ -167,13 +185,13 @@ let gcon =
 (* qual 	→ 	pat <- exp     	(generator) *)
 (* 	| 	let decls     	(local declaration) *)
 (* 	| 	exp     	(guard) *)
-let qual = unit_p
+let qual = p_fix_later
  
 (* alts 	→ 	alt1 ; … ; altn     	(n ≥ 1) *)
 (* alt 	→ 	pat -> exp [where decls]      *)
 (* 	| 	pat gdpat [where decls]      *)
 (* 	| 	    	(empty alternative) *)
-let alt = unit_p
+let alt = p_fix_later
  
 (* gdpat 	→ 	guards -> exp [ gdpat ]      *)
  
@@ -182,10 +200,10 @@ let alt = unit_p
 (* 	| 	pat <- exp ;      *)
 (* 	| 	let decls ;      *)
 (* 	| 	;     	(empty statement) *)
-let stmt = unit_p
+let stmt = p_fix_later
  
 (* fbind 	→ 	qvar = exp      *)
-let fbind = unit_p
+let fbind = p_fix_later
  
 (* pat 	→ 	lpat qconop pat     	(infix constructor) *)
 (* 	| 	- (integer | float)     	(negative literal) *)
@@ -204,6 +222,7 @@ let fbind = unit_p
 (* 	| 	( pat1 , … , patk )     	(tuple pattern, k ≥ 2) *)
 (* 	| 	[ pat1 , … , patk ]     	(list pattern, k ≥ 1) *)
 (* 	| 	~ apat     	(irrefutable pattern) *)
+let apat = p_fix_later
  
 (* fpat 	→ 	qvar = pat      *)
 
@@ -264,6 +283,7 @@ let fbind = unit_p
 (* fixity 	→ 	infixl | infixr | infix      *)
  
 (* type 	→ 	btype [-> type]     	(function type) *)
+let typ = p_fix_later
  
 (* btype 	→ 	[btype] atype     	(type application) *)
  
@@ -279,9 +299,17 @@ let fbind = unit_p
 (* 	| 	(->)     	(function constructor) *)
 (* 	| 	(,{,})     	(tupling constructors) *)
  
+(* class 	→ 	qtycls tyvar      *)
+let clazz = p_fix_later
+
 (* context 	→ 	class      *)
 (* 	| 	( class1 , … , classn )     	(n ≥ 0) *)
-(* class 	→ 	qtycls tyvar      *)
+let rec class_list () =
+  cons <$> clazz <*> (just_tk TK.SP_COMMA *> call class_list)
+    <|> return []
+let context =  list_form (cons <$> clazz <*> return [])
+  <|> parened (list_form (call class_list))
+
 (* 	| 	qtycls ( tyvar atype1 … atypen )     	(n ≥ 1) *)
 (* scontext 	→ 	simpleclass      *)
 (* 	| 	( simpleclass1 , … , simpleclassn )     	(n ≥ 0) *)
@@ -332,25 +360,36 @@ let fbind = unit_p
 (* guard 	→ 	pat <- infixexp     	(pattern guard) *)
 (* 	| 	let decls     	(local declaration) *)
 (* 	| 	infixexp     	(boolean guard) *)
- 
+
+let rec dummy_exp_top () = p_fix_later
+
 (* exp 	→ 	infixexp :: [context =>] type     	(expression type signature) *)
 (* 	| 	infixexp      *)
-(* let  exp () = unit_p *)
+(* and     exp () = p_fix_later *)
+and     exp () = 
+  HSY.exp
+  <$> call infixexp
+  <*> optional (HSY.exp_typ
+                <$> optional (form_append context (just_tk TK.KS_R_W_ARROW))
+                <*> typ)
  
 (* infixexp 	→ 	lexp qop infixexp     	(infix operator application) *)
 (* 	| 	- infixexp     	(prefix negation) *)
 (* 	| 	lexp      *)
- 
+and     infixexp () = (HSY.op_app <$> (call lexp) <*> qop <*> (call infixexp))
+  <|> (HSY.neg <$> (call infixexp)) <|> (HSY.lexp <$> (call lexp))
+
 (* lexp 	→ 	\ apat1 … apatn -> exp     	(lambda abstraction, n ≥ 1) *)
 (* 	| 	let decls in exp     	(let expression) *)
 (* 	| 	if exp [;] then exp [;] else exp     	(conditional) *)
 (* 	| 	case exp of { alts }     	(case expression) *)
 (* 	| 	do { stmts }     	(do expression) *)
 (* 	| 	fexp      *)
-let rec lexp () = HSY.fexp <$> call fexp
+and     lexp () = HSY.fexp <$> call fexp
 
 (* fexp 	→ 	[fexp] aexp     	(function application) *)
-and     fexp () = HSY.fexp_of_aexp_list <$> some (fst <$> call aexp)
+(* and     fexp () = HSY.fexp_of_aexp_list <$> some (fst <$> call aexp) *)
+and     fexp () = HSY.fexp_of_aexp_list <$> list_form (some (call aexp))
  
 (* aexp 	→ 	qvar     	(variable) *)
 (* 	| 	gcon     	(general constructor) *)
@@ -365,8 +404,9 @@ and     fexp () = HSY.fexp_of_aexp_list <$> some (fst <$> call aexp)
 (* 	| 	qcon { fbind1 , … , fbindn }     	(labeled construction, n ≥ 0) *)
 (* 	| 	aexp⟨qcon⟩ { fbind1 , … , fbindn }     	(labeled update, n  ≥  1) *)
 and     aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> literal)
+  (* <|> (HSY.paren <$> parened (call exp)) *)
 
-(* and     stmts = HSY.do_stmts <$> many stmt <*> call exp *)
+and     stmts () = HSY.do_stmts <$> many stmt <*> call exp
  
 let any    = pred_tk (fun _ -> true)
 
@@ -374,5 +414,5 @@ let test_s0 = any *>
   some (qvar <|> gconsym <|> qconop <|> qvarop)
 
 (*  *)
-let test_s1 : (TK.t, unit HSY.fexp) parser =
+let test_s1 : (TK.t, HSY.infexp HSY.fexp * TK.region) parser =
   (fst <$> any) *> call fexp

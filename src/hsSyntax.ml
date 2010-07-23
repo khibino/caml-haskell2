@@ -102,20 +102,31 @@ type lit =
   | Int  of int64
   | Flo  of float
 
-type typ = unit
-type cls = unit
+
+type fix_later = unit
+
+type typ = fix_later
+type cls = fix_later
 
 type context = cls list
 
-type apat = unit
+type apat = fix_later
 
 type 'infexp exp = 'infexp * (context option * typ) option
 
-type 'infexp qual  = unit
-type 'infexp fbind = unit
-type 'infexp alt   = unit
-type 'infexp stmt  = unit
-type 'infexp decl  = unit
+let exp_typ context typ = match context with
+  | Some c -> TK.form_between c (Some (fst c), fst typ) typ
+  | None   -> ((None, fst typ), snd typ)
+
+let exp infexp = function
+  | Some typ -> TK.form_between infexp (infexp, Some (fst typ)) typ
+  | None     -> ((infexp, None), snd infexp)
+
+type 'infexp qual  = fix_later
+type 'infexp fbind = fix_later
+type 'infexp alt   = fix_later
+type 'infexp stmt  = fix_later
+type 'infexp decl  = fix_later
 
 type 'infexp do_stmts = 'infexp stmt list * 'infexp exp
 
@@ -134,21 +145,12 @@ type 'infexp aexp =
   | ConsL  of id * 'infexp fbind list (* labeled construction *)
   | UpdL   of id * 'infexp fbind list (* labeled update *)
 
-let var = TK.with_region (fun id -> Var id)
-let con = TK.with_region (fun id -> Con id)
-let lit = TK.with_region (fun lit -> Lit lit)
-
-
 (* 以下の実装のように引数を一つづつ部分適用するのは効率が良くないはず。
  * 一度に複数の引数を適用するように変更するかも。
  *)
 type 'infexp fexp =
   | FApp of ('infexp fexp * 'infexp aexp)
   | AExp of 'infexp aexp
-
-let fexp_of_aexp_list = function
-  | []  -> failwith "Something wrong. fexp parser is broken?"
-  | e :: es  -> L.fold_left (fun fexp e -> FApp (fexp, e)) (AExp e) es
 
 type 'infexp lexp =
   | Lambda of apat list * 'infexp exp
@@ -158,9 +160,38 @@ type 'infexp lexp =
   | Do     of 'infexp do_stmts
   | FExp   of 'infexp fexp
 
-let fexp fexp = FExp fexp
-
 type infexp =
   | OpApp of infexp lexp * id * infexp
   | Neg   of infexp
   | LExp  of infexp lexp
+
+(* infexp construction *)
+let op_app lexp id infexp = TK.form_between lexp (OpApp (fst lexp, fst id, fst infexp)) infexp
+let neg = TK.with_region (fun infexp -> Neg infexp)
+let lexp = TK.with_region (fun lexp -> LExp lexp)
+
+(* aexp construction *)
+let var = TK.with_region (fun id -> Var id)
+let con = TK.with_region (fun id -> Con id)
+let lit = TK.with_region (fun lit -> Lit lit)
+let paren = TK.with_region (fun exp -> (Paren exp : infexp aexp))
+let tuple = TK.with_region (fun el  -> (Tuple el : infexp aexp))
+let list  = TK.with_region (fun el  -> (List el : infexp aexp))
+
+let comp exp ql = TK.form_between exp (Comp (fst exp, fst ql)) ql
+let left_sec  infexp id = TK.form_between infexp (LeftS  (fst infexp, fst id)) id
+let right_sec id infexp = TK.form_between id (RightS (fst id, fst infexp)) infexp
+let lbl_cons id bl = TK.form_between id (ConsL (fst id, fst bl)) bl
+let lbl_upd  id bl = TK.form_between id (UpdL  (fst id, fst bl)) bl
+
+(* fexp construction *)
+let fexp_of_aexp_list
+    : infexp aexp list * TK.region -> infexp fexp * TK.region =
+  TK.with_region (function
+    | []  -> failwith "Something wrong. fexp parser is broken?"
+    | e :: es  -> L.fold_left (fun fexp e -> FApp (fexp, e)) (AExp e) es)
+
+(* lexp construction *)
+let fexp : infexp fexp * TK.region -> infexp lexp * TK.region =
+  TK.with_region (fun fexp -> FExp fexp)
+
