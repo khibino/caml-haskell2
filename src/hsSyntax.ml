@@ -119,18 +119,14 @@ let exp_typ context typ = match context with
   | None   -> ((None, fst typ), snd typ)
 
 let exp infexp = function
-  | Some typ -> TK.form_between infexp (infexp, Some (fst typ)) typ
-  | None     -> ((infexp, None), snd infexp)
+  | Some typ -> TK.form_between infexp (fst infexp, Some (fst typ)) typ
+  | None     -> ((fst infexp, None), snd infexp)
 
 type 'infexp qual  = fix_later
 type 'infexp fbind = fix_later
 type 'infexp alt   = fix_later
 type 'infexp stmt  = fix_later
 type 'infexp decl  = fix_later
-
-type 'infexp do_stmts = 'infexp stmt list * 'infexp exp
-
-let do_stmts sl exp = (sl, exp)
 
 type 'infexp aexp =
   | Var    of id
@@ -139,6 +135,7 @@ type 'infexp aexp =
   | Paren  of 'infexp exp
   | Tuple  of 'infexp exp list
   | List   of 'infexp exp list
+  | ASeq   of 'infexp exp * 'infexp exp option * 'infexp exp option (* arithmetic sequence *)
   | Comp   of 'infexp exp * 'infexp qual list (* list comprehension *)
   | LeftS  of 'infexp * id (* left section*)
   | RightS of id * 'infexp (* right section*)
@@ -157,13 +154,16 @@ type 'infexp lexp =
   | Let    of 'infexp decl list * 'infexp exp
   | If     of 'infexp exp * 'infexp exp * 'infexp exp
   | Case   of 'infexp exp * 'infexp alt list
-  | Do     of 'infexp do_stmts
+  | Do     of 'infexp stmt list * 'infexp exp
   | FExp   of 'infexp fexp
 
 type infexp =
   | OpApp of infexp lexp * id * infexp
   | Neg   of infexp
   | LExp  of infexp lexp
+
+let comp2_region a b cons =
+  TK.form_between a (cons (fst a) (fst b)) b
 
 (* infexp construction *)
 let op_app lexp id infexp = TK.form_between lexp (OpApp (fst lexp, fst id, fst infexp)) infexp
@@ -178,11 +178,12 @@ let paren = TK.with_region (fun exp -> (Paren exp : infexp aexp))
 let tuple = TK.with_region (fun el  -> (Tuple el : infexp aexp))
 let list  = TK.with_region (fun el  -> (List el : infexp aexp))
 
-let comp exp ql = TK.form_between exp (Comp (fst exp, fst ql)) ql
-let left_sec  infexp id = TK.form_between infexp (LeftS  (fst infexp, fst id)) id
-let right_sec id infexp = TK.form_between id (RightS (fst id, fst infexp)) infexp
-let lbl_cons id bl = TK.form_between id (ConsL (fst id, fst bl)) bl
-let lbl_upd  id bl = TK.form_between id (UpdL  (fst id, fst bl)) bl
+(* let comp exp ql = TK.form_between exp (Comp (fst exp, fst ql)) ql *)
+let comp exp ql = comp2_region exp ql (fun a b -> Comp (a, b))
+let left_sec  infexp id = comp2_region infexp id (fun a b -> LeftS (a, b))
+let right_sec id infexp = comp2_region id infexp (fun a b -> RightS (a, b))
+let lbl_cons id bl = comp2_region id bl (fun a b -> ConsL (a, b))
+let lbl_upd  id bl = comp2_region id bl (fun a b -> UpdL  (a, b))
 
 (* fexp construction *)
 let fexp_of_aexp_list
@@ -192,6 +193,15 @@ let fexp_of_aexp_list
     | e :: es  -> L.fold_left (fun fexp e -> FApp (fexp, e)) (AExp e) es)
 
 (* lexp construction *)
+let lambda patl exp (* : infexp lexp * TK.region *) =
+  comp2_region patl exp (fun a b -> Lambda (a, b))
+let let_ decll exp (* : infexp lexp * TK.region *) =
+  comp2_region decll exp (fun a b -> Let (a, b))
+let if_ p t e (* : infexp lexp * TK.region *) =
+  TK.form_between p (If (fst p, fst t, fst e)) e
+let case exp altl (* : infexp lexp * TK.region *) =
+  comp2_region exp altl (fun a b -> Case (a, b))
+let do_ stmts exp = 
+  comp2_region stmts exp (fun a b -> Do (a, b))
 let fexp : infexp fexp * TK.region -> infexp lexp * TK.region =
   TK.with_region (fun fexp -> FExp fexp)
-

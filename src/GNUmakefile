@@ -1,9 +1,10 @@
 
 OCAMLFIND_ULEX_OPT =
-OCAMLFIND_OPT = -package ulex  -package batteries  -package cf -verbose
+#OCAMLFIND_OPT = -package ulex  -package batteries  -package cf -verbose
+OCAMLFIND_OPT = -package ulex -verbose
 
 extra_interfaces = lablgtk2 ulex
-extra_archives = lablgtk ulex
+extra_archives = lablgtk ulexing
 
 %Ulexer.cmo: %Ulexer.ml
 	ocamlfind ocamlc -c -o $@ $(OCAMLFIND_OPT) $(OCAMLFIND_ULEX_OPT) -syntax camlp4o $<
@@ -13,7 +14,7 @@ include ocaml_basic.gmk
 #%.cmo: %.ml
 #	ocamlfind ocamlc -c -o $@ $(OCAMLFIND_OPT) $<
 
-all: scratch.cma
+all: scratch.cma hsParserTestMain_b
 
 rebuild: clean all
 
@@ -41,6 +42,9 @@ scratch.cma: $(objs)
 
 #scratchold.cma: batParserCoExt.cmo token.cmo sSyntax.cmo sUlexer.cmo sCparser.cmo sTestOld.cmo
 #	ocamlfind ocamlc -a -o $@ $(OCAMLFIND_OPT) $(OCAMLFIND_ULEX_OPT) $^
+
+hsParserTestMain_b: scratch.cma hsParserTestMain.cmo
+	$(BYTE_LINK.ml) -o $@ $(byte_archives) $^
 
 clean:
 	$(RM) *.cmo

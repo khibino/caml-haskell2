@@ -35,6 +35,11 @@ let p_fix_later : (TK.t, unit * TK.region) parser = pure ((), region_fix_later)
 let conid = untag_tk (function | TK.T_CONID s -> Some s | _ -> None)
 let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) <|> conid
 
+let comma = just_tk TK.SP_COMMA
+let semi  = just_tk TK.SP_SEMI
+
+let opt_semi = optional semi
+
 (* 10.2  Lexical Syntax *)
 
 (* literal 	 → 	integer | float | char | string      *)
@@ -112,25 +117,45 @@ let integer = pred_tk (function | TK.L_INTEGER _ -> true | _ -> false)
 let form_prepend a p = TK.form_prepend <$> a <*> p
 let form_append  p a = TK.form_append  <$> p <*> a
 
+let ( **> ) = form_prepend
+let ( <** ) = form_append
+
 let form_between a b p = TK.form_between <$> a <*> p <*> b
 let between a b = form_between a b |.| (lift_a fst)
 
 let cons = (fun a d -> a :: d)
+let cons_nil x = [x]
 
 let list_form pl =
   (function
     | []         -> ([], region_dummy)
-    (* failwith "Null parsers. Syntax definition bug!" *)
     | [(e, reg)] -> ([e], reg)
-    | (e :: _) as es -> TK.form_between e (L.map fst es) (L.hd (Data.init es)))
+    | (er :: _) as ers -> TK.form_between er (L.map fst ers) (L.hd (Data.init ers)))
   <$> pl
+
+let l1_some p = Data.tuple2 <$> p <*> many p
+
+let l1_cons hd (ohd, tl) = (hd, ohd :: tl)
+let l1_cons_nil hd = (hd, [])
+let l1_list (hd, tl) = hd :: tl
+
+(* failwith "Null parsers. Syntax definition bug!" *)
+let l1_form pl1 =
+  (function
+    | ((e, reg), []) -> ((e, []), reg)
+    | (er, ers)  -> TK.form_between er (fst er, (L.map fst ers)) (L.hd (Data.init ers)))
+   <$> pl1
+
+let l1_list_form pl1 = TK.with_region l1_list <$> l1_form pl1
 
 let form_parened    p = form_between (just_tk TK.SP_LEFT_PAREN)   (just_tk TK.SP_RIGHT_PAREN)   p
 let form_bracketed  p = form_between (just_tk TK.SP_LEFT_BRACKET) (just_tk TK.SP_RIGHT_BRACKET) p
+let form_braced     p = form_between (just_tk TK.SP_LEFT_BRACE)   (just_tk TK.SP_RIGHT_BRACE)   p
 let form_backquoted p = form_between (just_tk TK.SP_B_QUOTE)      (just_tk TK.SP_B_QUOTE)       p
 
 let parened    p = form_parened    ((lift_a fst) p)
 let bracketed  p = form_bracketed  ((lift_a fst) p)
+let braced     p = form_braced     ((lift_a fst) p)
 let backquoted p = form_backquoted ((lift_a fst) p)
 
 (* var 	→ 	varid | ( varsym )     	(variable) *)
@@ -166,7 +191,7 @@ let qop = qvarop <|> qconop
 (* 	| 	[]      *)
 (* 	| 	(,{,})      *)
 (* 	| 	qcon      *)
-let rec commas () = (just_tk TK.SP_COMMA *> (succ <$> call commas)) <|> pure 0
+let rec commas () = (comma *> (succ <$> call commas)) <|> pure 0
 let gcon =
   form_parened (pure HSY.id_unit) <|> form_bracketed (pure HSY.id_null_list)
     <|> form_parened (HSY.id_tuple <$> (call commas))
@@ -177,30 +202,36 @@ let gcon =
    -- define elements which referred by expression element. -- 
 *)
 
-(* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
 (* decl 	→ 	gendecl      *)
 (* 	| 	(funlhs | pat) rhs      *)
-
+let decl = p_fix_later
  
+(* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
+let rec decl_list () =
+  cons <$> decl <*> (semi *> call decl_list)
+  <|> return []
+let decls = braced (list_form (call decl_list))
+
 (* qual 	→ 	pat <- exp     	(generator) *)
 (* 	| 	let decls     	(local declaration) *)
 (* 	| 	exp     	(guard) *)
 let qual = p_fix_later
+let rec qual_clist_1 () =
+  (cons <$> qual <*> (comma *> call qual_clist_1))
+  <|> (cons_nil <$> qual)
  
-(* alts 	→ 	alt1 ; … ; altn     	(n ≥ 1) *)
 (* alt 	→ 	pat -> exp [where decls]      *)
 (* 	| 	pat gdpat [where decls]      *)
 (* 	| 	    	(empty alternative) *)
 let alt = p_fix_later
  
+(* alts 	→ 	alt1 ; … ; altn     	(n ≥ 1) *)
+let rec alt_list () =
+  l1_cons <$> alt <*> (semi *> call alt_list)
+  <|> ((fun e -> (e, [])) <$> alt)
+let alts = l1_list_form (call alt_list)
+
 (* gdpat 	→ 	guards -> exp [ gdpat ]      *)
- 
-(* stmts 	→ 	stmt1 … stmtn exp [;]     	(n ≥ 0) *)
-(* stmt 	→ 	exp ;      *)
-(* 	| 	pat <- exp ;      *)
-(* 	| 	let decls ;      *)
-(* 	| 	;     	(empty statement) *)
-let stmt = p_fix_later
  
 (* fbind 	→ 	qvar = exp      *)
 let fbind = p_fix_later
@@ -305,9 +336,9 @@ let clazz = p_fix_later
 (* context 	→ 	class      *)
 (* 	| 	( class1 , … , classn )     	(n ≥ 0) *)
 let rec class_list () =
-  cons <$> clazz <*> (just_tk TK.SP_COMMA *> call class_list)
-    <|> return []
-let context =  list_form (cons <$> clazz <*> return [])
+  cons <$> clazz <*> (comma *> call class_list)
+  <|> return []
+let context =  list_form (cons_nil <$> clazz)
   <|> parened (list_form (call class_list))
 
 (* 	| 	qtycls ( tyvar atype1 … atypen )     	(n ≥ 1) *)
@@ -369,15 +400,16 @@ let rec dummy_exp_top () = p_fix_later
 and     exp () = 
   HSY.exp
   <$> call infixexp
-  <*> optional (HSY.exp_typ
-                <$> optional (form_append context (just_tk TK.KS_R_W_ARROW))
-                <*> typ)
+  <*> optional (just_tk TK.KS_2_COLON **>
+                  (HSY.exp_typ
+                   <$> optional (form_append context (just_tk TK.KS_R_W_ARROW))
+                   <*> typ))
  
 (* infixexp 	→ 	lexp qop infixexp     	(infix operator application) *)
 (* 	| 	- infixexp     	(prefix negation) *)
 (* 	| 	lexp      *)
 and     infixexp () = (HSY.op_app <$> (call lexp) <*> qop <*> (call infixexp))
-  <|> (HSY.neg <$> (call infixexp)) <|> (HSY.lexp <$> (call lexp))
+  <|> (just_tk TK.KS_MINUS **> (HSY.neg <$> call infixexp)) <|> (HSY.lexp <$> (call lexp))
 
 (* lexp 	→ 	\ apat1 … apatn -> exp     	(lambda abstraction, n ≥ 1) *)
 (* 	| 	let decls in exp     	(let expression) *)
@@ -385,7 +417,26 @@ and     infixexp () = (HSY.op_app <$> (call lexp) <*> qop <*> (call infixexp))
 (* 	| 	case exp of { alts }     	(case expression) *)
 (* 	| 	do { stmts }     	(do expression) *)
 (* 	| 	fexp      *)
-and     lexp () = HSY.fexp <$> call fexp
+and     lexp () =
+  (HSY.lambda
+   <$> (form_prepend (just_tk TK.KS_B_SLASH) (l1_list_form (l1_some apat)))
+   <*> call exp)
+  <|> (just_tk TK.K_LET **> (HSY.let_ <$> decls <*> (just_tk TK.K_IN **> call exp)))
+    <|> (just_tk TK.K_IF **> (HSY.if_ <$> (call exp <* opt_semi)
+                              <*> (just_tk TK.K_THEN **> call exp <* opt_semi)
+                              <*> (just_tk TK.K_ELSE **> call exp)))
+      <|> (just_tk TK.K_CASE **> (HSY.case <$> call exp <*> (just_tk TK.K_OF **> alts)))
+        <|> (just_tk TK.K_DO **> braced (call stmts))
+          <|> (HSY.fexp <$> call fexp)
+
+(* stmts 	→ 	stmt1 … stmtn exp [;]     	(n ≥ 0) *)
+and     stmts () = HSY.do_ <$> list_form (many stmt) <*> call exp <* opt_semi
+(* stmt 	→ 	exp ;      *)
+(* 	| 	pat <- exp ;      *)
+(* 	| 	let decls ;      *)
+(* 	| 	;     	(empty statement) *)
+and     stmt = p_fix_later
+ 
 
 (* fexp 	→ 	[fexp] aexp     	(function application) *)
 (* and     fexp () = HSY.fexp_of_aexp_list <$> some (fst <$> call aexp) *)
@@ -403,16 +454,30 @@ and     fexp () = HSY.fexp_of_aexp_list <$> list_form (some (call aexp))
 (* 	| 	( qop⟨-⟩ infixexp )     	(right section) *)
 (* 	| 	qcon { fbind1 , … , fbindn }     	(labeled construction, n ≥ 0) *)
 (* 	| 	aexp⟨qcon⟩ { fbind1 , … , fbindn }     	(labeled update, n  ≥  1) *)
+and     exp_clist_1 () =
+  (l1_cons <$> call exp <*> (comma *> call exp_clist_1))
+  <|> (l1_cons_nil <$> call exp)
+and     exp_clist_2 () =
+  l1_cons <$> call exp <*> (comma *> call exp_clist_1)
 and     aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> literal)
-  (* <|> (HSY.paren <$> parened (call exp)) *)
+  <|> (HSY.paren <$> parened (call exp))
+    <|> (HSY.tuple <$> parened (l1_list_form (call exp_clist_2)))
+      <|> (HSY.list <$> bracketed (l1_list_form (call exp_clist_1)))
+        <|> bracketed (HSY.comp
+                       <$> call exp
+                       <*> (just_tk TK.KS_BAR **> list_form (call qual_clist_1)))
 
-and     stmts () = HSY.do_stmts <$> many stmt <*> call exp
- 
-let any    = pred_tk (fun _ -> true)
+let drop_any    = pred_tk (fun _ -> true)
 
-let test_s0 = any *>
+let test_s0 = drop_any *>
   some (qvar <|> gconsym <|> qconop <|> qvarop)
 
 (*  *)
+(*let test_s1 : (TK.t, HSY.infexp HSY.lexp * TK.region) parser =
+  (fst <$> drop_any) *> call lexp*)
+
 let test_s1 : (TK.t, HSY.infexp HSY.fexp * TK.region) parser =
-  (fst <$> any) *> call fexp
+  (fst <$> drop_any) *> call fexp
+
+(*let test_s1 : (TK.t, HSY.infexp HSY.aexp * TK.region) parser =
+  (fst <$> drop_any) *> call aexp*)

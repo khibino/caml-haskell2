@@ -1,4 +1,8 @@
 #! /bin/sh
+## $Header$
+##
+
+PATH="/usr/bin:/bin"
 
 make clean scratch.cma
 
