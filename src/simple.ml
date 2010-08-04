@@ -10,6 +10,8 @@ struct
 
   let return e = fun tkl -> Some (e, tkl)
 
+  let fail = fun _ -> None
+
   let mplus a b s = match a s with
     | None -> b s
     | v    -> v

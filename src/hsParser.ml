@@ -186,6 +186,7 @@ let qop = qvarop <|> qconop
 (* gconsym 	→ 	: | qconsym      *)
 (* gconsym は qcon から使われている ↑ *)
 (* gconsym is used by qcon above *)
+let qop_other_than_minus = not_parser (just_tk TK.KS_MINUS) *> qop
  
 (* gcon 	→ 	()      *)
 (* 	| 	[]      *)
@@ -466,6 +467,9 @@ and     aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> lit
         <|> bracketed (HSY.comp
                        <$> call exp
                        <*> (just_tk TK.KS_BAR **> list_form (call qual_clist_1)))
+          <|> parened (HSY.left_sec <$> call infixexp <*> qop)
+            <|> parened (HSY.right_sec <$> qop_other_than_minus <*> call infixexp)
+              (* <|> ... *)
 
 let drop_any    = pred_tk (fun _ -> true)
 
