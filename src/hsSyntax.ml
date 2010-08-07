@@ -187,10 +187,9 @@ let lbl_upd  id bl = comp2_region id bl (fun a b -> UpdL  (a, b))
 
 (* fexp construction *)
 let fexp_of_aexp_list
-    : infexp aexp list * TK.region -> infexp fexp * TK.region =
-  TK.with_region (function
-    | []  -> failwith "Something wrong. fexp parser is broken?"
-    | e :: es  -> L.fold_left (fun fexp e -> FApp (fexp, e)) (AExp e) es)
+    : (infexp aexp * infexp aexp list) * TK.region -> infexp fexp * TK.region =
+  TK.with_region (fun
+    (e, es)  -> L.fold_left (fun fexp e -> FApp (fexp, e)) (AExp e) es)
 
 (* lexp construction *)
 let lambda patl exp (* : infexp lexp * TK.region *) =

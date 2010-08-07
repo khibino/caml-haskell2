@@ -40,6 +40,62 @@ let semi  = just_tk TK.SP_SEMI
 
 let opt_semi = optional semi
 
+(* 汎用の構成子 *)
+(*   構文構造の並び、挟まれる構造、0以上のリスト、1以上のリスト *)
+
+let form_prepend a p = TK.form_prepend <$> a <*> p
+let form_append  p a = TK.form_append  <$> p <*> a
+
+let ( **> ) = form_prepend
+let ( <** ) = form_append
+
+let form_between a b p = TK.form_between <$> a <*> p <*> b
+let between a b = form_between a b |.| (lift_a fst)
+
+let form_parened    p = form_between (just_tk TK.SP_LEFT_PAREN)   (just_tk TK.SP_RIGHT_PAREN)   p
+let form_bracketed  p = form_between (just_tk TK.SP_LEFT_BRACKET) (just_tk TK.SP_RIGHT_BRACKET) p
+let form_braced     p = form_between (just_tk TK.SP_LEFT_BRACE)   (just_tk TK.SP_RIGHT_BRACE)   p
+let form_backquoted p = form_between (just_tk TK.SP_B_QUOTE)      (just_tk TK.SP_B_QUOTE)       p
+
+let parened    p = form_parened    ((lift_a fst) p)
+let bracketed  p = form_bracketed  ((lift_a fst) p)
+let braced     p = form_braced     ((lift_a fst) p)
+let backquoted p = form_backquoted ((lift_a fst) p)
+
+(* リストとなる構文要素 - 長さ0でも可 - 位置情報付き *)
+let cons = (fun a d -> a :: d)
+let cons_nil x = [x]
+
+let list_form pl =
+  (function
+    | []         -> ([], region_dummy)
+    | [(e, reg)] -> ([e], reg)
+    | (er :: _) as ers -> TK.form_between er (L.map fst ers) (L.hd (Data.init ers)))
+  <$> pl
+
+(* 長さ1以上のリスト 意図的に0以上のリストと型が異なるようにしている *)
+let l1_some p = Data.tuple2 <$> p <*> many p
+
+let l1_cons hd (ohd, tl) = (hd, ohd :: tl)
+let l1_cons_nil hd = (hd, [])
+let l1_list (hd, tl) = hd :: tl
+
+let l1_form pl1 =
+  (function
+    | ((e, reg), []) -> ((e, []), reg)
+    | (er, ers)  -> TK.form_between er (fst er, (L.map fst ers)) (L.hd (Data.init ers)))
+   <$> pl1
+
+let l1_list_form pl1 = TK.with_region l1_list <$> l1_form pl1
+
+let rec separated a d =
+  (cons <$> a <*> (d *> call (fun () -> separated a d)))
+  <|> pure []
+
+let rec l1_separated a d =
+  (l1_cons <$> a <*> (d *> call (fun () -> l1_separated a d)))
+  <|> (l1_cons_nil <$> a)
+
 (* 10.2  Lexical Syntax *)
 
 (* literal 	 → 	integer | float | char | string      *)
@@ -114,50 +170,6 @@ let integer = pred_tk (function | TK.L_INTEGER _ -> true | _ -> false)
    -- variable and symbol section -- 
 *)
 
-let form_prepend a p = TK.form_prepend <$> a <*> p
-let form_append  p a = TK.form_append  <$> p <*> a
-
-let ( **> ) = form_prepend
-let ( <** ) = form_append
-
-let form_between a b p = TK.form_between <$> a <*> p <*> b
-let between a b = form_between a b |.| (lift_a fst)
-
-let cons = (fun a d -> a :: d)
-let cons_nil x = [x]
-
-let list_form pl =
-  (function
-    | []         -> ([], region_dummy)
-    | [(e, reg)] -> ([e], reg)
-    | (er :: _) as ers -> TK.form_between er (L.map fst ers) (L.hd (Data.init ers)))
-  <$> pl
-
-let l1_some p = Data.tuple2 <$> p <*> many p
-
-let l1_cons hd (ohd, tl) = (hd, ohd :: tl)
-let l1_cons_nil hd = (hd, [])
-let l1_list (hd, tl) = hd :: tl
-
-(* failwith "Null parsers. Syntax definition bug!" *)
-let l1_form pl1 =
-  (function
-    | ((e, reg), []) -> ((e, []), reg)
-    | (er, ers)  -> TK.form_between er (fst er, (L.map fst ers)) (L.hd (Data.init ers)))
-   <$> pl1
-
-let l1_list_form pl1 = TK.with_region l1_list <$> l1_form pl1
-
-let form_parened    p = form_between (just_tk TK.SP_LEFT_PAREN)   (just_tk TK.SP_RIGHT_PAREN)   p
-let form_bracketed  p = form_between (just_tk TK.SP_LEFT_BRACKET) (just_tk TK.SP_RIGHT_BRACKET) p
-let form_braced     p = form_between (just_tk TK.SP_LEFT_BRACE)   (just_tk TK.SP_RIGHT_BRACE)   p
-let form_backquoted p = form_between (just_tk TK.SP_B_QUOTE)      (just_tk TK.SP_B_QUOTE)       p
-
-let parened    p = form_parened    ((lift_a fst) p)
-let bracketed  p = form_bracketed  ((lift_a fst) p)
-let braced     p = form_braced     ((lift_a fst) p)
-let backquoted p = form_backquoted ((lift_a fst) p)
-
 (* var 	→ 	varid | ( varsym )     	(variable) *)
 let var = varid <|> parened varsym
 
@@ -208,18 +220,12 @@ let gcon =
 let decl = p_fix_later
  
 (* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
-let rec decl_list () =
-  cons <$> decl <*> (semi *> call decl_list)
-  <|> return []
-let decls = braced (list_form (call decl_list))
+let decls = braced (list_form (separated decl semi))
 
 (* qual 	→ 	pat <- exp     	(generator) *)
 (* 	| 	let decls     	(local declaration) *)
 (* 	| 	exp     	(guard) *)
 let qual = p_fix_later
-let rec qual_clist_1 () =
-  (cons <$> qual <*> (comma *> call qual_clist_1))
-  <|> (cons_nil <$> qual)
  
 (* alt 	→ 	pat -> exp [where decls]      *)
 (* 	| 	pat gdpat [where decls]      *)
@@ -227,10 +233,7 @@ let rec qual_clist_1 () =
 let alt = p_fix_later
  
 (* alts 	→ 	alt1 ; … ; altn     	(n ≥ 1) *)
-let rec alt_list () =
-  l1_cons <$> alt <*> (semi *> call alt_list)
-  <|> ((fun e -> (e, [])) <$> alt)
-let alts = l1_list_form (call alt_list)
+let alts = l1_list_form (l1_separated alt semi)
 
 (* gdpat 	→ 	guards -> exp [ gdpat ]      *)
  
@@ -336,11 +339,8 @@ let clazz = p_fix_later
 
 (* context 	→ 	class      *)
 (* 	| 	( class1 , … , classn )     	(n ≥ 0) *)
-let rec class_list () =
-  cons <$> clazz <*> (comma *> call class_list)
-  <|> return []
 let context =  list_form (cons_nil <$> clazz)
-  <|> parened (list_form (call class_list))
+  <|> parened (list_form (separated clazz comma (* class list *) ))
 
 (* 	| 	qtycls ( tyvar atype1 … atypen )     	(n ≥ 1) *)
 (* scontext 	→ 	simpleclass      *)
@@ -440,8 +440,7 @@ and     stmt = p_fix_later
  
 
 (* fexp 	→ 	[fexp] aexp     	(function application) *)
-(* and     fexp () = HSY.fexp_of_aexp_list <$> some (fst <$> call aexp) *)
-and     fexp () = HSY.fexp_of_aexp_list <$> list_form (some (call aexp))
+and     fexp () = HSY.fexp_of_aexp_list <$> l1_form (l1_some (call aexp))
  
 (* aexp 	→ 	qvar     	(variable) *)
 (* 	| 	gcon     	(general constructor) *)
@@ -466,10 +465,10 @@ and     aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> lit
       <|> (HSY.list <$> bracketed (l1_list_form (call exp_clist_1)))
         <|> bracketed (HSY.comp
                        <$> call exp
-                       <*> (just_tk TK.KS_BAR **> list_form (call qual_clist_1)))
+                       <*> (just_tk TK.KS_BAR **> l1_list_form (l1_separated qual comma)))
           <|> parened (HSY.left_sec <$> call infixexp <*> qop)
             <|> parened (HSY.right_sec <$> qop_other_than_minus <*> call infixexp)
-              (* <|> ... *)
+              (* <|> HSY.lbl_cons <$> qcon <*> (braced ) *)
 
 let drop_any    = pred_tk (fun _ -> true)
 

@@ -76,9 +76,12 @@ sig
   val (<$>)  : ('e0 -> 'e1) -> ('tk, 'e0) parser -> ('tk, 'e1) parser
 
   val and_parser : ('tk, 'e) parser -> ('tk, 'e) parser
+  val (~&)       : ('tk, 'e) parser -> ('tk, 'e) parser
   val not_parser : ('tk, 'e) parser -> ('tk, unit) parser
+  val (~!)       : ('tk, 'e) parser -> ('tk, unit) parser
 
   val call_parser : (unit -> ('tk, 'e) parser) -> ('tk, 'e) parser
+  val (~$)        : (unit -> ('tk, 'e) parser) -> ('tk, 'e) parser
 
   val ap    : ('tk, 'e0 -> 'e1) parser -> ('tk, 'e0) parser -> ('tk, 'e1) parser
   val (<*>) : ('tk, 'e0 -> 'e1) parser -> ('tk, 'e0) parser -> ('tk, 'e1) parser
@@ -93,6 +96,7 @@ sig
   val many   : ('tk, 'e) parser -> ('tk, 'e list) parser
 
   val optional : ('tk, 'e) parser -> ('tk, 'e option) parser
+  val (~?)     : ('tk, 'e) parser -> ('tk, 'e option) parser
 
   val pred : ('tk -> bool) -> ('tk, 'tk) parser
   val just : 'tk -> ('tk, 'tk) parser
@@ -135,14 +139,17 @@ struct
 
   let and_parser a =
     a >>= fun e -> return e
+  let (~&) = and_parser
 
   let not_parser a =
     ((a >> return false) <|> return true) >>= function
       | false -> fail
       | true  -> return ()
+  let (~!) = not_parser
 
   let call_parser f =
     return () >>= fun a -> f a
+  let (~$) = call_parser
 
   let ap mf lz =
     mf >>= fun f ->
@@ -169,6 +176,7 @@ struct
   let some az = some az ()
 
   let optional az = ((fun x -> Some x) <$> az) <|> pure None
+  let (~?) = optional
 
   let pred = LOp.satisfy
   let just tk = pred ((=) tk)
