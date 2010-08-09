@@ -31,10 +31,15 @@ let unfold (seed:'b) (gen: 'b -> ('a * 'b) option) =
     | None         -> Nil
   in lazy (step seed)
 
-let rec to_list l =
-  match next l with
+let rec to_list lz =
+  match next lz with
     | Some (car, cdr) -> car :: to_list cdr
     | None            -> []
+
+let of_list l =
+  unfold l (function
+    | car :: cdr -> Some (car, cdr)
+    | []         -> None)
 
 
 type 'a node_t =

@@ -28,9 +28,10 @@ sources = \
 	hsLayout.ml \
 	hsLayoutTest.ml \
 	hsSyntax.ml \
-	hsParserState.ml \
 	parser.ml \
 	simple.ml \
+	parserSimpleTest.ml \
+	hsParserState.ml \
 	hsParser.ml \
 	hsParserTest.ml \
 	t.ml
