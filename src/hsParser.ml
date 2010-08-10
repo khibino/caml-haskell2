@@ -198,7 +198,6 @@ let qop = qvarop <|> qconop
 (* gconsym 	→ 	: | qconsym      *)
 (* gconsym は qcon から使われている ↑ *)
 (* gconsym is used by qcon above *)
-let qop_other_than_minus = not_parser (just_tk TK.KS_MINUS) *> qop
  
 (* gcon 	→ 	()      *)
 (* 	| 	[]      *)
@@ -454,21 +453,21 @@ and     fexp () = HSY.fexp_of_aexp_list <$> l1_form (l1_some (call aexp))
 (* 	| 	( qop⟨-⟩ infixexp )     	(right section) *)
 (* 	| 	qcon { fbind1 , … , fbindn }     	(labeled construction, n ≥ 0) *)
 (* 	| 	aexp⟨qcon⟩ { fbind1 , … , fbindn }     	(labeled update, n  ≥  1) *)
-and     exp_clist_1 () =
-  (l1_cons <$> call exp <*> (comma *> call exp_clist_1))
-  <|> (l1_cons_nil <$> call exp)
-and     exp_clist_2 () =
-  l1_cons <$> call exp <*> (comma *> call exp_clist_1)
+and     comma_expl_1 () =
+  l1_separated (call exp) comma
+and     comma_expl_2 () =
+  l1_cons <$> call exp <*> (comma *> call comma_expl_1)
 and     aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> literal)
   <|> (HSY.paren <$> parened (call exp))
-    <|> (HSY.tuple <$> parened (l1_list_form (call exp_clist_2)))
-      <|> (HSY.list <$> bracketed (l1_list_form (call exp_clist_1)))
+    <|> (HSY.tuple <$> parened (l1_list_form (call comma_expl_2)))
+      <|> (HSY.list <$> bracketed (l1_list_form (call comma_expl_1)))
         <|> bracketed (HSY.comp
                        <$> call exp
                        <*> (just_tk TK.KS_BAR **> l1_list_form (l1_separated qual comma)))
           <|> parened (HSY.left_sec <$> call infixexp <*> qop)
-            <|> parened (HSY.right_sec <$> qop_other_than_minus <*> call infixexp)
-              (* <|> HSY.lbl_cons <$> qcon <*> (braced ) *)
+            <|> parened (HSY.right_sec <$> (~! (just_tk TK.KS_MINUS) *> qop) <*> call infixexp)
+              <|> (HSY.lbl_cons <$> qcon <*> braced (list_form (separated fbind comma)))
+                <|> (HSY.lbl_upd <$> qcon <*> braced (l1_list_form (l1_separated fbind comma)))
 
 let drop_any    = pred_tk (fun _ -> true)
 
