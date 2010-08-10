@@ -38,7 +38,7 @@ let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) 
 let comma = just_tk TK.SP_COMMA
 let semi  = just_tk TK.SP_SEMI
 
-let opt_semi = optional semi
+let opt_semi = ~? semi
 
 (* 汎用の構成子 *)
 (*   構文構造の並び、挟まれる構造、0以上のリスト、1以上のリスト *)
@@ -315,10 +315,10 @@ let apat = p_fix_later
 (* ops 	→ 	op1 , … , opn     	(n ≥ 1) *)
 (* vars 	→ 	var1 , …, varn     	(n ≥ 1) *)
 (* fixity 	→ 	infixl | infixr | infix      *)
- 
+
 (* type 	→ 	btype [-> type]     	(function type) *)
 let typ = p_fix_later
- 
+
 (* btype 	→ 	[btype] atype     	(type application) *)
  
 (* atype 	→ 	gtycon      *)
@@ -334,7 +334,7 @@ let typ = p_fix_later
 (* 	| 	(,{,})     	(tupling constructors) *)
  
 (* class 	→ 	qtycls tyvar      *)
-let clazz = p_fix_later
+let clazz = HSY.tuple2_region <$> qtycls <*> tyvar
 
 (* context 	→ 	class      *)
 (* 	| 	( class1 , … , classn )     	(n ≥ 0) *)
@@ -396,14 +396,13 @@ let rec dummy_exp_top () = p_fix_later
 
 (* exp 	→ 	infixexp :: [context =>] type     	(expression type signature) *)
 (* 	| 	infixexp      *)
-(* and     exp () = p_fix_later *)
 and     exp () = 
   HSY.exp
   <$> call infixexp
-  <*> optional (just_tk TK.KS_2_COLON **>
-                  (HSY.exp_typ
-                   <$> optional (form_append context (just_tk TK.KS_R_W_ARROW))
-                   <*> typ))
+  <*> ~? (just_tk TK.KS_2_COLON **>
+            (HSY.exp_typ
+             <$> ~? (form_append context (just_tk TK.KS_R_W_ARROW))
+             <*> typ))
  
 (* infixexp 	→ 	lexp qop infixexp     	(infix operator application) *)
 (* 	| 	- infixexp     	(prefix negation) *)

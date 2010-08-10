@@ -102,11 +102,16 @@ type lit =
   | Int  of int64
   | Flo  of float
 
+let comp2_region a b cons =
+  TK.form_between a (cons (fst a) (fst b)) b
+
+let tuple2_region a b =
+  comp2_region a b Data.tuple2
 
 type fix_later = unit
 
 type typ = fix_later
-type cls = fix_later
+type cls = id * SYM.t
 
 type context = cls list
 
@@ -161,9 +166,6 @@ type infexp =
   | OpApp of infexp lexp * id * infexp
   | Neg   of infexp
   | LExp  of infexp lexp
-
-let comp2_region a b cons =
-  TK.form_between a (cons (fst a) (fst b)) b
 
 (* infexp construction *)
 let op_app lexp id infexp = TK.form_between lexp (OpApp (fst lexp, fst id, fst infexp)) infexp
