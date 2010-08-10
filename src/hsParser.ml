@@ -63,9 +63,6 @@ let braced     p = form_braced     ((lift_a fst) p)
 let backquoted p = form_backquoted ((lift_a fst) p)
 
 (* リストとなる構文要素 - 長さ0でも可 - 位置情報付き *)
-let cons = (fun a d -> a :: d)
-let cons_nil x = [x]
-
 let list_form pl =
   (function
     | []         -> ([], region_dummy)
@@ -76,25 +73,21 @@ let list_form pl =
 (* 長さ1以上のリスト 意図的に0以上のリストと型が異なるようにしている *)
 let l1_some p = Data.tuple2 <$> p <*> many p
 
-let l1_cons hd (ohd, tl) = (hd, ohd :: tl)
-let l1_cons_nil hd = (hd, [])
-let l1_list (hd, tl) = hd :: tl
-
 let l1_form pl1 =
   (function
     | ((e, reg), []) -> ((e, []), reg)
     | (er, ers)  -> TK.form_between er (fst er, (L.map fst ers)) (L.hd (Data.init ers)))
    <$> pl1
 
-let l1_list_form pl1 = TK.with_region l1_list <$> l1_form pl1
+let l1_list_form pl1 = TK.with_region Data.l1_list <$> l1_form pl1
 
 let rec separated a d =
-  (cons <$> a <*> (d *> call (fun () -> separated a d)))
+  (Data.cons <$> a <*> (d *> ~$ (fun () -> separated a d)))
   <|> pure []
 
 let rec l1_separated a d =
-  (l1_cons <$> a <*> (d *> call (fun () -> l1_separated a d)))
-  <|> (l1_cons_nil <$> a)
+  (Data.l1_cons <$> a <*> (d *> ~$ (fun () -> l1_separated a d)))
+  <|> (Data.l1_cons_nil <$> a)
 
 (* 10.2  Lexical Syntax *)
 
@@ -203,10 +196,10 @@ let qop = qvarop <|> qconop
 (* 	| 	[]      *)
 (* 	| 	(,{,})      *)
 (* 	| 	qcon      *)
-let rec commas () = (comma *> (succ <$> call commas)) <|> pure 0
+let rec commas () = (comma *> (succ <$> ~$ commas)) <|> pure 0
 let gcon =
   form_parened (pure HSY.id_unit) <|> form_bracketed (pure HSY.id_null_list)
-    <|> form_parened (HSY.id_tuple <$> (call commas))
+    <|> form_parened (HSY.id_tuple <$> (~$ commas))
       <|> qcon
 
 (* 10.5  Context-Free Syntax
@@ -316,16 +309,23 @@ let apat = p_fix_later
 (* vars 	→ 	var1 , …, varn     	(n ≥ 1) *)
 (* fixity 	→ 	infixl | infixr | infix      *)
 
+let rec dummy_type_top () = p_fix_later
+ 
 (* type 	→ 	btype [-> type]     	(function type) *)
-let typ = p_fix_later
-
+and     typ ()   =
+  HSY.typ_of_btype_list
+  <$> (l1_form
+         (l1_separated (~$ btype) (just_tk TK.KS_R_ARROW)))
+ 
 (* btype 	→ 	[btype] atype     	(type application) *)
+and     btype () = p_fix_later
  
 (* atype 	→ 	gtycon      *)
 (* 	| 	tyvar      *)
 (* 	| 	( type1 , … , typek )     	(tuple type, k ≥ 2) *)
 (* 	| 	[ type ]     	(list type) *)
 (* 	| 	( type )     	(parenthesized constructor) *)
+and     atype () = p_fix_later
  
 (* gtycon 	→ 	qtycon      *)
 (* 	| 	()     	(unit type) *)
@@ -334,11 +334,11 @@ let typ = p_fix_later
 (* 	| 	(,{,})     	(tupling constructors) *)
  
 (* class 	→ 	qtycls tyvar      *)
-let clazz = HSY.tuple2_region <$> qtycls <*> tyvar
+let clazz = HSY.cls <$> qtycls <*> tyvar
 
 (* context 	→ 	class      *)
 (* 	| 	( class1 , … , classn )     	(n ≥ 0) *)
-let context =  list_form (cons_nil <$> clazz)
+let context =  list_form (Data.cons_nil <$> clazz)
   <|> parened (list_form (separated clazz comma (* class list *) ))
 
 (* 	| 	qtycls ( tyvar atype1 … atypen )     	(n ≥ 1) *)
@@ -398,17 +398,17 @@ let rec dummy_exp_top () = p_fix_later
 (* 	| 	infixexp      *)
 and     exp () = 
   HSY.exp
-  <$> call infixexp
+  <$> ~$ infixexp
   <*> ~? (just_tk TK.KS_2_COLON **>
             (HSY.exp_typ
              <$> ~? (form_append context (just_tk TK.KS_R_W_ARROW))
-             <*> typ))
+             <*> ~$ typ))
  
 (* infixexp 	→ 	lexp qop infixexp     	(infix operator application) *)
 (* 	| 	- infixexp     	(prefix negation) *)
 (* 	| 	lexp      *)
-and     infixexp () = (HSY.op_app <$> (call lexp) <*> qop <*> (call infixexp))
-  <|> (just_tk TK.KS_MINUS **> (HSY.neg <$> call infixexp)) <|> (HSY.lexp <$> (call lexp))
+and     infixexp () = (HSY.op_app <$> (~$ lexp) <*> qop <*> (~$ infixexp))
+  <|> (just_tk TK.KS_MINUS **> (HSY.neg <$> ~$ infixexp)) <|> (HSY.lexp <$> (~$ lexp))
 
 (* lexp 	→ 	\ apat1 … apatn -> exp     	(lambda abstraction, n ≥ 1) *)
 (* 	| 	let decls in exp     	(let expression) *)
@@ -419,17 +419,17 @@ and     infixexp () = (HSY.op_app <$> (call lexp) <*> qop <*> (call infixexp))
 and     lexp () =
   (HSY.lambda
    <$> (form_prepend (just_tk TK.KS_B_SLASH) (l1_list_form (l1_some apat)))
-   <*> call exp)
-  <|> (just_tk TK.K_LET **> (HSY.let_ <$> decls <*> (just_tk TK.K_IN **> call exp)))
-    <|> (just_tk TK.K_IF **> (HSY.if_ <$> (call exp <* opt_semi)
-                              <*> (just_tk TK.K_THEN **> call exp <* opt_semi)
-                              <*> (just_tk TK.K_ELSE **> call exp)))
-      <|> (just_tk TK.K_CASE **> (HSY.case <$> call exp <*> (just_tk TK.K_OF **> alts)))
-        <|> (just_tk TK.K_DO **> braced (call stmts))
-          <|> (HSY.fexp <$> call fexp)
+   <*> ~$ exp)
+  <|> (just_tk TK.K_LET **> (HSY.let_ <$> decls <*> (just_tk TK.K_IN **> ~$ exp)))
+    <|> (just_tk TK.K_IF **> (HSY.if_ <$> (~$ exp <* opt_semi)
+                              <*> (just_tk TK.K_THEN **> ~$ exp <* opt_semi)
+                              <*> (just_tk TK.K_ELSE **> ~$ exp)))
+      <|> (just_tk TK.K_CASE **> (HSY.case <$> ~$ exp <*> (just_tk TK.K_OF **> alts)))
+        <|> (just_tk TK.K_DO **> braced (~$ stmts))
+          <|> (HSY.fexp <$> ~$ fexp)
 
 (* stmts 	→ 	stmt1 … stmtn exp [;]     	(n ≥ 0) *)
-and     stmts () = HSY.do_ <$> list_form (many stmt) <*> call exp <* opt_semi
+and     stmts () = HSY.do_ <$> list_form (many stmt) <*> ~$ exp <* opt_semi
 (* stmt 	→ 	exp ;      *)
 (* 	| 	pat <- exp ;      *)
 (* 	| 	let decls ;      *)
@@ -438,7 +438,7 @@ and     stmt = p_fix_later
  
 
 (* fexp 	→ 	[fexp] aexp     	(function application) *)
-and     fexp () = HSY.fexp_of_aexp_list <$> l1_form (l1_some (call aexp))
+and     fexp () = HSY.fexp_of_aexp_list <$> l1_form (l1_some (~$ aexp))
  
 (* aexp 	→ 	qvar     	(variable) *)
 (* 	| 	gcon     	(general constructor) *)
@@ -453,18 +453,18 @@ and     fexp () = HSY.fexp_of_aexp_list <$> l1_form (l1_some (call aexp))
 (* 	| 	qcon { fbind1 , … , fbindn }     	(labeled construction, n ≥ 0) *)
 (* 	| 	aexp⟨qcon⟩ { fbind1 , … , fbindn }     	(labeled update, n  ≥  1) *)
 and     comma_expl_1 () =
-  l1_separated (call exp) comma
+  l1_separated (~$ exp) comma
 and     comma_expl_2 () =
-  l1_cons <$> call exp <*> (comma *> call comma_expl_1)
+  Data.l1_cons <$> ~$ exp <*> (comma *> ~$ comma_expl_1)
 and     aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> literal)
-  <|> (HSY.paren <$> parened (call exp))
-    <|> (HSY.tuple <$> parened (l1_list_form (call comma_expl_2)))
-      <|> (HSY.list <$> bracketed (l1_list_form (call comma_expl_1)))
+  <|> (HSY.paren <$> parened (~$ exp))
+    <|> (HSY.tuple <$> parened (l1_list_form (~$ comma_expl_2)))
+      <|> (HSY.list <$> bracketed (l1_list_form (~$ comma_expl_1)))
         <|> bracketed (HSY.comp
-                       <$> call exp
+                       <$> ~$ exp
                        <*> (just_tk TK.KS_BAR **> l1_list_form (l1_separated qual comma)))
-          <|> parened (HSY.left_sec <$> call infixexp <*> qop)
-            <|> parened (HSY.right_sec <$> (~! (just_tk TK.KS_MINUS) *> qop) <*> call infixexp)
+          <|> parened (HSY.left_sec <$> ~$ infixexp <*> qop)
+            <|> parened (HSY.right_sec <$> (~! (just_tk TK.KS_MINUS) *> qop) <*> ~$ infixexp)
               <|> (HSY.lbl_cons <$> qcon <*> braced (list_form (separated fbind comma)))
                 <|> (HSY.lbl_upd <$> qcon <*> braced (l1_list_form (l1_separated fbind comma)))
 
@@ -475,10 +475,10 @@ let test_s0 = drop_any *>
 
 (*  *)
 (*let test_s1 : (TK.t, HSY.infexp HSY.lexp * TK.region) parser =
-  (fst <$> drop_any) *> call lexp*)
+  (fst <$> drop_any) *> ~$ lexp*)
 
 let test_s1 : (TK.t, HSY.infexp HSY.fexp * TK.region) parser =
-  (fst <$> drop_any) *> call fexp
+  (fst <$> drop_any) *> ~$ fexp
 
 (*let test_s1 : (TK.t, HSY.infexp HSY.aexp * TK.region) parser =
-  (fst <$> drop_any) *> call aexp*)
+  (fst <$> drop_any) *> ~$ aexp*)

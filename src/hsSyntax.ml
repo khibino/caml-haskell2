@@ -110,8 +110,20 @@ let tuple2_region a b =
 
 type fix_later = unit
 
-type typ = fix_later
+type typ =
+  | TFun of (btype * typ)
+  | TBtype of btype
+
+and btype = fix_later
+
+let typ_of_btype_list
+    : (btype * btype list) * TK.region -> typ * TK.region =
+  TK.with_region (fun
+    tl1 -> let (hd, tl) = Data.l1_rev tl1 in
+           L.fold_left (fun typ btype -> TFun (btype, typ)) (TBtype hd) tl)
+
 type cls = id * SYM.t
+let cls = tuple2_region
 
 type context = cls list
 
