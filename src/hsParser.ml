@@ -156,7 +156,7 @@ let qconsym = qual_id_tk (function
   <|> (HPST.q_not_qual <$> consym)
 
 let integer = pred_tk (function | TK.L_INTEGER _ -> true | _ -> false)
-(* let  *)
+
 
 (* 10.5  Context-Free Syntax
    -- 変数とシンボルの定義は他から参照されるので先に定義 -- 
@@ -196,10 +196,10 @@ let qop = qvarop <|> qconop
 (* 	| 	[]      *)
 (* 	| 	(,{,})      *)
 (* 	| 	qcon      *)
-let rec commas () = (comma *> (succ <$> ~$ commas)) <|> pure 0
+let rec commas1 () = comma *> ((succ <$> ~$ commas1) <|> pure 1)
 let gcon =
   form_parened (pure HSY.id_unit) <|> form_bracketed (pure HSY.id_null_list)
-    <|> form_parened (HSY.id_tuple <$> (~$ commas))
+    <|> form_parened (HSY.id_tuple <$> (~$ commas1))
       <|> qcon
 
 (* 10.5  Context-Free Syntax
@@ -309,29 +309,51 @@ let apat = p_fix_later
 (* vars 	→ 	var1 , …, varn     	(n ≥ 1) *)
 (* fixity 	→ 	infixl | infixr | infix      *)
 
+(* 10.5  Context-Free Syntax
+   -- type から参照される要素を先に定義 -- 
+   -- define elements which referred by type element. -- 
+*)
+
+(* gtycon 	→ 	qtycon      *)
+(* 	| 	()     	(unit type) *)
+(* 	| 	[]     	(list constructor) *)
+(* 	| 	(->)     	(function constructor) *)
+(* 	| 	(,{,})     	(tupling constructors) *)
+let     gtycon =
+  HSY.g_qtycon <$> qtycon
+  <|> form_parened (pure HSY.TC_Unit)
+    <|> form_bracketed (pure HSY.TC_List)
+      <|> form_parened (just_tk TK.KS_R_ARROW *> pure HSY.TC_Arrow)
+        <|> (HSY.g_tuple <$> form_parened (~$ commas1))
+
 let rec dummy_type_top () = p_fix_later
- 
+
 (* type 	→ 	btype [-> type]     	(function type) *)
 and     typ ()   =
   HSY.typ_of_btype_list
-  <$> (l1_form
-         (l1_separated (~$ btype) (just_tk TK.KS_R_ARROW)))
+  <$> l1_form
+    (l1_separated (~$ btype) (just_tk TK.KS_R_ARROW))
  
 (* btype 	→ 	[btype] atype     	(type application) *)
-and     btype () = p_fix_later
+and     btype () =
+  HSY.btype_of_atype_list
+  <$> l1_form (l1_some (~$ atype))
  
 (* atype 	→ 	gtycon      *)
 (* 	| 	tyvar      *)
 (* 	| 	( type1 , … , typek )     	(tuple type, k ≥ 2) *)
 (* 	| 	[ type ]     	(list type) *)
 (* 	| 	( type )     	(parenthesized constructor) *)
-and     atype () = p_fix_later
- 
-(* gtycon 	→ 	qtycon      *)
-(* 	| 	()     	(unit type) *)
-(* 	| 	[]     	(list constructor) *)
-(* 	| 	(->)     	(function constructor) *)
-(* 	| 	(,{,})     	(tupling constructors) *)
+
+and     atype () =
+  (HSY.a_gtc <$> gtycon)
+  <|> (HSY.a_tyvar <$> tyvar)
+    <|> parened (HSY.a_tuple
+                 <$> l1_form (Data.l1_cons
+                              <$> ~$ typ
+                              <*> (comma *> l1_separated (~$ typ) comma)))
+      <|> bracketed (HSY.a_list <$> ~$ typ)
+        <|> parened (HSY.a_paren <$> ~$ typ)
  
 (* class 	→ 	qtycls tyvar      *)
 let clazz = HSY.cls <$> qtycls <*> tyvar
@@ -474,11 +496,11 @@ let test_s0 = drop_any *>
   some (qvar <|> gconsym <|> qconop <|> qvarop)
 
 (*  *)
+let test_s1 : (TK.t, HSY.infexp * TK.region) parser =
+  (fst <$> drop_any) *> ~$ infixexp
+
 (*let test_s1 : (TK.t, HSY.infexp HSY.lexp * TK.region) parser =
   (fst <$> drop_any) *> ~$ lexp*)
 
-let test_s1 : (TK.t, HSY.infexp HSY.fexp * TK.region) parser =
-  (fst <$> drop_any) *> ~$ fexp
-
-(*let test_s1 : (TK.t, HSY.infexp HSY.aexp * TK.region) parser =
-  (fst <$> drop_any) *> ~$ aexp*)
+let test_s2 : (TK.t, HSY.typ * TK.region) parser =
+  (fst <$> drop_any) *> ~$ typ

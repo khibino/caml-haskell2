@@ -110,17 +110,47 @@ let tuple2_region a b =
 
 type fix_later = unit
 
+type gtycon =
+  | TC_QTycon of id
+  | TC_Unit
+  | TC_List
+  | TC_Arrow
+  | TC_Tuple of int
+
 type typ =
   | TFun of (btype * typ)
   | TBtype of btype
 
-and btype = fix_later
+and  btype =
+  | BApp of (btype * atype)
+  | BAtype of atype
+
+and  atype =
+  | AGTC of gtycon
+  | ATyvar of SYM.t
+  | ATuple of typ list
+  | AList  of typ
+  | AParen of typ
 
 let typ_of_btype_list
     : (btype * btype list) * TK.region -> typ * TK.region =
   TK.with_region (fun
     tl1 -> let (hd, tl) = Data.l1_rev tl1 in
            L.fold_left (fun typ btype -> TFun (btype, typ)) (TBtype hd) tl)
+
+let btype_of_atype_list
+    : (atype * atype list) * TK.region -> btype * TK.region =
+  TK.with_region (fun
+    (hd, tl) -> L.fold_left (fun b a -> BApp (b, a)) (BAtype hd) tl)
+
+let g_qtycon = TK.with_region (fun id -> TC_QTycon id)
+let g_tuple  = TK.with_region (fun i -> TC_Tuple i)
+
+let a_gtc   = TK.with_region (fun gtc -> AGTC gtc)
+let a_tyvar = TK.with_region (fun tyvar -> ATyvar tyvar)
+let a_tuple = TK.with_region (fun types -> ATuple (Data.l1_list types))
+let a_list  = TK.with_region (fun typ -> AList  typ)
+let a_paren = TK.with_region (fun typ -> AParen  typ)
 
 type cls = id * SYM.t
 let cls = tuple2_region
