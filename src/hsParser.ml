@@ -202,57 +202,6 @@ let gcon =
     <|> form_parened (HSY.id_tuple <$> (~$ commas1))
       <|> qcon
 
-(* 10.5  Context-Free Syntax
-   -- expression から参照される要素を先に定義 -- 
-   -- define elements which referred by expression element. -- 
-*)
-
-(* decl 	→ 	gendecl      *)
-(* 	| 	(funlhs | pat) rhs      *)
-let decl = p_fix_later
- 
-(* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
-let decls = braced (list_form (separated decl semi))
-
-(* qual 	→ 	pat <- exp     	(generator) *)
-(* 	| 	let decls     	(local declaration) *)
-(* 	| 	exp     	(guard) *)
-let qual = p_fix_later
- 
-(* alt 	→ 	pat -> exp [where decls]      *)
-(* 	| 	pat gdpat [where decls]      *)
-(* 	| 	    	(empty alternative) *)
-let alt = p_fix_later
- 
-(* alts 	→ 	alt1 ; … ; altn     	(n ≥ 1) *)
-let alts = l1_list_form (l1_separated alt semi)
-
-(* gdpat 	→ 	guards -> exp [ gdpat ]      *)
- 
-(* fbind 	→ 	qvar = exp      *)
-let fbind = p_fix_later
- 
-(* pat 	→ 	lpat qconop pat     	(infix constructor) *)
-(* 	| 	- (integer | float)     	(negative literal) *)
-(* 	| 	lpat      *)
- 
-(* lpat 	→ 	apat      *)
-(* 	| 	- (integer | float)     	(negative literal) *)
-(* 	| 	gcon apat1 … apatk     	(arity gcon  =  k, k ≥ 1) *)
- 
-(* apat 	→ 	var [ @ apat]     	(as pattern) *)
-(* 	| 	gcon     	(arity gcon  =  0) *)
-(* 	| 	qcon { fpat1 , … , fpatk }     	(labeled pattern, k ≥ 0) *)
-(* 	| 	literal      *)
-(* 	| 	_     	(wildcard) *)
-(* 	| 	( pat )     	(parenthesized pattern) *)
-(* 	| 	( pat1 , … , patk )     	(tuple pattern, k ≥ 2) *)
-(* 	| 	[ pat1 , … , patk ]     	(list pattern, k ≥ 1) *)
-(* 	| 	~ apat     	(irrefutable pattern) *)
-let apat = p_fix_later
- 
-(* fpat 	→ 	qvar = pat      *)
-
 
 
 (* 10.5  Context-Free Syntax *)
@@ -293,6 +242,13 @@ let apat = p_fix_later
 (* 	| 	foreign fdecl      *)
 (* 	| 	decl      *)
  
+(* decl 	→ 	gendecl      *)
+(* 	| 	(funlhs | pat) rhs      *)
+let decl = p_fix_later
+ 
+(* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
+let decls = braced (list_form (separated decl semi))
+
 (* cdecls 	→ 	{ cdecl1 ; … ; cdecln }     	(n ≥ 0) *)
 (* cdecl 	→ 	gendecl      *)
 (* 	| 	(funlhs | var) rhs      *)
@@ -400,6 +356,44 @@ let context =  list_form (Data.cons_nil <$> clazz)
 (* 	| 	()      *)
 (* fatype 	→ 	qtycon atype1 … atypek     	(k  ≥  0) *)
  
+
+(* 10.5  Context-Free Syntax
+   -- expression から参照される要素を先に定義 -- 
+   --- パターン
+   -- define elements which referred by expression elements. -- 
+   --- Pattern
+*)
+
+(* pat 	→ 	lpat qconop pat     	(infix constructor) *)
+(* 	| 	- (integer | float)     	(negative literal) *)
+(* 	| 	lpat      *)
+ 
+(* lpat 	→ 	apat      *)
+(* 	| 	- (integer | float)     	(negative literal) *)
+(* 	| 	gcon apat1 … apatk     	(arity gcon  =  k, k ≥ 1) *)
+ 
+(* apat 	→ 	var [ @ apat]     	(as pattern) *)
+(* 	| 	gcon     	(arity gcon  =  0) *)
+(* 	| 	qcon { fpat1 , … , fpatk }     	(labeled pattern, k ≥ 0) *)
+(* 	| 	literal      *)
+(* 	| 	_     	(wildcard) *)
+(* 	| 	( pat )     	(parenthesized pattern) *)
+(* 	| 	( pat1 , … , patk )     	(tuple pattern, k ≥ 2) *)
+(* 	| 	[ pat1 , … , patk ]     	(list pattern, k ≥ 1) *)
+(* 	| 	~ apat     	(irrefutable pattern) *)
+let apat = p_fix_later
+ 
+(* fpat 	→ 	qvar = pat      *)
+
+
+(* 10.5  Context-Free Syntax
+   -- top から参照される要素を先に定義 -- 
+   --- exp
+   -- define elements which referred by top elements. -- 
+   --- exp
+*)
+let rec dummy_exp_top () = p_fix_later
+
 (* funlhs 	→ 	var apat { apat }      *)
 (* 	| 	pat varop pat      *)
 (* 	| 	( funlhs ) apat { apat }      *)
@@ -413,8 +407,6 @@ let context =  list_form (Data.cons_nil <$> clazz)
 (* guard 	→ 	pat <- infixexp     	(pattern guard) *)
 (* 	| 	let decls     	(local declaration) *)
 (* 	| 	infixexp     	(boolean guard) *)
-
-let rec dummy_exp_top () = p_fix_later
 
 (* exp 	→ 	infixexp :: [context =>] type     	(expression type signature) *)
 (* 	| 	infixexp      *)
@@ -446,18 +438,9 @@ and     lexp () =
     <|> (just_tk TK.K_IF **> (HSY.if_ <$> (~$ exp <* opt_semi)
                               <*> (just_tk TK.K_THEN **> ~$ exp <* opt_semi)
                               <*> (just_tk TK.K_ELSE **> ~$ exp)))
-      <|> (just_tk TK.K_CASE **> (HSY.case <$> ~$ exp <*> (just_tk TK.K_OF **> alts)))
+      <|> (just_tk TK.K_CASE **> (HSY.case <$> ~$ exp <*> (just_tk TK.K_OF **> ~$ alts)))
         <|> (just_tk TK.K_DO **> braced (~$ stmts))
           <|> (HSY.fexp <$> ~$ fexp)
-
-(* stmts 	→ 	stmt1 … stmtn exp [;]     	(n ≥ 0) *)
-and     stmts () = HSY.do_ <$> list_form (many stmt) <*> ~$ exp <* opt_semi
-(* stmt 	→ 	exp ;      *)
-(* 	| 	pat <- exp ;      *)
-(* 	| 	let decls ;      *)
-(* 	| 	;     	(empty statement) *)
-and     stmt = p_fix_later
- 
 
 (* fexp 	→ 	[fexp] aexp     	(function application) *)
 and     fexp () = HSY.fexp_of_aexp_list <$> l1_form (l1_some (~$ aexp))
@@ -487,8 +470,35 @@ and     aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> lit
                        <*> (just_tk TK.KS_BAR **> l1_list_form (l1_separated qual comma)))
           <|> parened (HSY.left_sec <$> ~$ infixexp <*> qop)
             <|> parened (HSY.right_sec <$> (~! (just_tk TK.KS_MINUS) *> qop) <*> ~$ infixexp)
-              <|> (HSY.lbl_cons <$> qcon <*> braced (list_form (separated fbind comma)))
-                <|> (HSY.lbl_upd <$> qcon <*> braced (l1_list_form (l1_separated fbind comma)))
+              <|> (HSY.lbl_cons <$> qcon <*> braced (list_form (separated (~$ fbind) comma)))
+                <|> (HSY.lbl_upd <$> qcon <*> braced (l1_list_form (l1_separated (~$ fbind) comma)))
+
+(* qual 	→ 	pat <- exp     	(generator) *)
+(* 	| 	let decls     	(local declaration) *)
+(* 	| 	exp     	(guard) *)
+and qual = p_fix_later
+ 
+(* alt 	→ 	pat -> exp [where decls]      *)
+(* 	| 	pat gdpat [where decls]      *)
+(* 	| 	    	(empty alternative) *)
+and alt = p_fix_later
+ 
+(* alts 	→ 	alt1 ; … ; altn     	(n ≥ 1) *)
+and     alts () = l1_list_form (l1_separated alt semi)
+
+(* gdpat 	→ 	guards -> exp [ gdpat ]      *)
+ 
+(* stmts 	→ 	stmt1 … stmtn exp [;]     	(n ≥ 0) *)
+and     stmts () = HSY.do_ <$> list_form (many stmt) <*> ~$ exp <* opt_semi
+(* stmt 	→ 	exp ;      *)
+(* 	| 	pat <- exp ;      *)
+(* 	| 	let decls ;      *)
+(* 	| 	;     	(empty statement) *)
+and     stmt = p_fix_later
+ 
+(* fbind 	→ 	qvar = exp      *)
+and     fbind () = HSY.fbind <$> qvar <*> (just_tk TK.KS_EQ *> ~$ exp)
+ 
 
 let drop_any    = pred_tk (fun _ -> true)
 

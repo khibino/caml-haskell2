@@ -63,7 +63,7 @@ let qual_id (q, n) = {
   qual  = Q q;
 }
 
-let unqual_id (n, m) = {
+let unqual_id (m, n) = {
   short = N   n;
   qual  = Unq m;
 }
@@ -170,10 +170,12 @@ let exp infexp = function
   | None     -> ((fst infexp, None), snd infexp)
 
 type 'infexp qual  = fix_later
-type 'infexp fbind = fix_later
+type 'infexp fbind = id * 'infexp exp
 type 'infexp alt   = fix_later
 type 'infexp stmt  = fix_later
 type 'infexp decl  = fix_later
+
+let fbind qvar exp = comp2_region qvar exp Data.tuple2
 
 type 'infexp aexp =
   | Var    of id
