@@ -277,11 +277,11 @@ let decls = braced (list_form (separated decl semi))
 (* 	| 	(->)     	(function constructor) *)
 (* 	| 	(,{,})     	(tupling constructors) *)
 let     gtycon =
-  HSY.g_qtycon <$> qtycon
+  HSY.gt_qtycon <$> qtycon
   <|> form_parened (pure HSY.GT_Unit)
     <|> form_bracketed (pure HSY.GT_List)
       <|> form_parened (r_arrow *> pure HSY.GT_Arrow)
-        <|> (HSY.g_tuple <$> form_parened (~$ commas1))
+        <|> (HSY.gt_tuple <$> form_parened (~$ commas1))
 
 let rec dummy_type_top () = p_fix_later
 
@@ -303,14 +303,14 @@ and     btype () =
 (* 	| 	( type )     	(parenthesized constructor) *)
 
 and     atype () =
-  (HSY.a_gtc <$> gtycon)
-  <|> (HSY.a_tyvar <$> tyvar)
-    <|> parened (HSY.a_tuple
+  (HSY.at_gtc <$> gtycon)
+  <|> (HSY.at_tyvar <$> tyvar)
+    <|> parened (HSY.at_tuple
                  <$> l1_form (Data.l1_cons
                               <$> ~$ typ
                               <*> (comma *> l1_separated (~$ typ) comma)))
-      <|> bracketed (HSY.a_list <$> ~$ typ)
-        <|> parened (HSY.a_paren <$> ~$ typ)
+      <|> bracketed (HSY.at_list <$> ~$ typ)
+        <|> parened (HSY.at_paren <$> ~$ typ)
  
 (* class 	→ 	qtycls tyvar      *)
 let clazz = HSY.cls <$> qtycls <*> tyvar
@@ -389,6 +389,7 @@ and     apat () =
   <|> (HSY.ap_gcon <$> gcon)
  
 (* fpat 	→ 	qvar = pat      *)
+and     fpat () = p_fix_later
 
 
 (* 10.5  Context-Free Syntax

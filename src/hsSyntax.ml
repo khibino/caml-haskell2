@@ -91,6 +91,8 @@ let id_unit  = special_id Unit
 let id_null_list = special_id NullList
 let id_tuple i   = special_id (Tuple i)
 
+type gcon = id
+
 let tk_id_colon = TK.with_region (function
   | TK.KS_COLON -> id_colon
   | _           -> failwith "Not KS_COLON token!")
@@ -143,25 +145,36 @@ let btype_of_atype_list
   TK.with_region (fun
     (hd, tl) -> L.fold_left (fun b a -> BT_app (b, a)) (BT_atype hd) tl)
 
-let g_qtycon = TK.with_region (fun id -> GT_QTycon id)
-let g_tuple  = TK.with_region (fun i -> GT_Tuple i)
+let gt_qtycon = TK.with_region (fun id -> GT_QTycon id)
+let gt_tuple  = TK.with_region (fun i -> GT_Tuple i)
 
-let a_gtc   = TK.with_region (fun gtc -> AT_gtc gtc)
-let a_tyvar = TK.with_region (fun tyvar -> AT_tyvar tyvar)
-let a_tuple = TK.with_region (fun types -> AT_tuple (Data.l1_list types))
-let a_list  = TK.with_region (fun typ -> AT_list  typ)
-let a_paren = TK.with_region (fun typ -> AT_paren typ)
+let at_gtc   = TK.with_region (fun gtc -> AT_gtc gtc)
+let at_tyvar = TK.with_region (fun tyvar -> AT_tyvar tyvar)
+let at_tuple = TK.with_region (fun types -> AT_tuple (Data.l1_list types))
+let at_list  = TK.with_region (fun typ -> AT_list  typ)
+let at_paren = TK.with_region (fun typ -> AT_paren typ)
 
 type cls = id * SYM.t
 let cls = tuple2_region
 
 type context = cls list
 
+type 'pat fpat = fix_later
+
+type 'pat apat =
+  | AP_var  of (SYM.t * 'pat apat option)
+  | AP_gcon of gcon
+  | AP_qcon of id * 'pat fpat list
+  | AP_lit  of lit
+  | AP_all
+  | AP_paren of 'pat
+  | AP_tuple of 'pat list
+  | AP_list  of 'pat list
+  | AP_irr   of 'pat apat
+
+type 'pat lpat = fix_later
+
 type pat  = fix_later
-and  lpat = fix_later
-and  apat =
-  | AP_var  of (SYM.t * apat option)
-  | AP_gcon of id
 
 let ap_var var = function
   | Some as_p -> comp2_region var as_p (fun a b -> AP_var (a, Some b))
@@ -209,7 +222,7 @@ type 'infexp fexp =
   | AExp of 'infexp aexp
 
 type 'infexp lexp =
-  | Lambda of apat list * 'infexp exp
+  | Lambda of pat apat list * 'infexp exp
   | Let    of 'infexp decl list * 'infexp exp
   | If     of 'infexp exp * 'infexp exp * 'infexp exp
   | Case   of 'infexp exp * 'infexp alt list
