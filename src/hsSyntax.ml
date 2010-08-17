@@ -111,62 +111,72 @@ let tuple2_region a b =
 type fix_later = unit
 
 type gtycon =
-  | TC_QTycon of id
-  | TC_Unit
-  | TC_List
-  | TC_Arrow
-  | TC_Tuple of int
+  | GT_QTycon of id
+  | GT_Unit
+  | GT_List
+  | GT_Arrow
+  | GT_Tuple of int
 
 type typ =
-  | TFun of (btype * typ)
-  | TBtype of btype
+  | T_fun of (btype * typ)
+  | T_btype of btype
 
 and  btype =
-  | BApp of (btype * atype)
-  | BAtype of atype
+  | BT_app of (btype * atype)
+  | BT_atype of atype
 
 and  atype =
-  | AGTC of gtycon
-  | ATyvar of SYM.t
-  | ATuple of typ list
-  | AList  of typ
-  | AParen of typ
+  | AT_gtc of gtycon
+  | AT_tyvar of SYM.t
+  | AT_tuple of typ list
+  | AT_list  of typ
+  | AT_paren of typ
 
 let typ_of_btype_list
     : (btype * btype list) * TK.region -> typ * TK.region =
   TK.with_region (fun
     tl1 -> let (hd, tl) = Data.l1_rev tl1 in
-           L.fold_left (fun typ btype -> TFun (btype, typ)) (TBtype hd) tl)
+           L.fold_left (fun typ btype -> T_fun (btype, typ)) (T_btype hd) tl)
 
 let btype_of_atype_list
     : (atype * atype list) * TK.region -> btype * TK.region =
   TK.with_region (fun
-    (hd, tl) -> L.fold_left (fun b a -> BApp (b, a)) (BAtype hd) tl)
+    (hd, tl) -> L.fold_left (fun b a -> BT_app (b, a)) (BT_atype hd) tl)
 
-let g_qtycon = TK.with_region (fun id -> TC_QTycon id)
-let g_tuple  = TK.with_region (fun i -> TC_Tuple i)
+let g_qtycon = TK.with_region (fun id -> GT_QTycon id)
+let g_tuple  = TK.with_region (fun i -> GT_Tuple i)
 
-let a_gtc   = TK.with_region (fun gtc -> AGTC gtc)
-let a_tyvar = TK.with_region (fun tyvar -> ATyvar tyvar)
-let a_tuple = TK.with_region (fun types -> ATuple (Data.l1_list types))
-let a_list  = TK.with_region (fun typ -> AList  typ)
-let a_paren = TK.with_region (fun typ -> AParen  typ)
+let a_gtc   = TK.with_region (fun gtc -> AT_gtc gtc)
+let a_tyvar = TK.with_region (fun tyvar -> AT_tyvar tyvar)
+let a_tuple = TK.with_region (fun types -> AT_tuple (Data.l1_list types))
+let a_list  = TK.with_region (fun typ -> AT_list  typ)
+let a_paren = TK.with_region (fun typ -> AT_paren typ)
 
 type cls = id * SYM.t
 let cls = tuple2_region
 
 type context = cls list
 
-type apat = fix_later
+type pat  = fix_later
+and  lpat = fix_later
+and  apat =
+  | AP_var  of (SYM.t * apat option)
+  | AP_gcon of id
+
+let ap_var var = function
+  | Some as_p -> comp2_region var as_p (fun a b -> AP_var (a, Some b))
+  | None      -> (AP_var (fst var, None), snd var)
+
+let ap_gcon = TK.with_region (fun id -> AP_gcon id)
 
 type 'infexp exp = 'infexp * (context option * typ) option
 
 let exp_typ context typ = match context with
-  | Some c -> TK.form_between c (Some (fst c), fst typ) typ
+  | Some c -> comp2_region c typ (fun a b -> ((Some a), b))
   | None   -> ((None, fst typ), snd typ)
 
 let exp infexp = function
-  | Some typ -> TK.form_between infexp (fst infexp, Some (fst typ)) typ
+  | Some typ -> comp2_region infexp typ (fun a b -> (a, Some b))
   | None     -> ((fst infexp, None), snd infexp)
 
 type 'infexp qual  = fix_later

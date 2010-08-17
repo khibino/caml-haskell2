@@ -37,6 +37,7 @@ let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) 
 
 let comma = just_tk TK.SP_COMMA
 let semi  = just_tk TK.SP_SEMI
+let r_arrow = just_tk TK.KS_R_ARROW
 
 let opt_semi = ~? semi
 
@@ -277,9 +278,9 @@ let decls = braced (list_form (separated decl semi))
 (* 	| 	(,{,})     	(tupling constructors) *)
 let     gtycon =
   HSY.g_qtycon <$> qtycon
-  <|> form_parened (pure HSY.TC_Unit)
-    <|> form_bracketed (pure HSY.TC_List)
-      <|> form_parened (just_tk TK.KS_R_ARROW *> pure HSY.TC_Arrow)
+  <|> form_parened (pure HSY.GT_Unit)
+    <|> form_bracketed (pure HSY.GT_List)
+      <|> form_parened (r_arrow *> pure HSY.GT_Arrow)
         <|> (HSY.g_tuple <$> form_parened (~$ commas1))
 
 let rec dummy_type_top () = p_fix_later
@@ -288,7 +289,7 @@ let rec dummy_type_top () = p_fix_later
 and     typ ()   =
   HSY.typ_of_btype_list
   <$> l1_form
-    (l1_separated (~$ btype) (just_tk TK.KS_R_ARROW))
+    (l1_separated (~$ btype) r_arrow)
  
 (* btype 	→ 	[btype] atype     	(type application) *)
 and     btype () =
@@ -367,10 +368,12 @@ let context =  list_form (Data.cons_nil <$> clazz)
 (* pat 	→ 	lpat qconop pat     	(infix constructor) *)
 (* 	| 	- (integer | float)     	(negative literal) *)
 (* 	| 	lpat      *)
+let rec pat  = p_fix_later
  
 (* lpat 	→ 	apat      *)
 (* 	| 	- (integer | float)     	(negative literal) *)
 (* 	| 	gcon apat1 … apatk     	(arity gcon  =  k, k ≥ 1) *)
+and     lpat = p_fix_later
  
 (* apat 	→ 	var [ @ apat]     	(as pattern) *)
 (* 	| 	gcon     	(arity gcon  =  0) *)
@@ -381,7 +384,9 @@ let context =  list_form (Data.cons_nil <$> clazz)
 (* 	| 	( pat1 , … , patk )     	(tuple pattern, k ≥ 2) *)
 (* 	| 	[ pat1 , … , patk ]     	(list pattern, k ≥ 1) *)
 (* 	| 	~ apat     	(irrefutable pattern) *)
-let apat = p_fix_later
+and     apat () =
+  (HSY.ap_var <$> var <*> ~? (just_tk TK.KS_AT *> ~$ apat))
+  <|> (HSY.ap_gcon <$> gcon)
  
 (* fpat 	→ 	qvar = pat      *)
 
@@ -432,8 +437,8 @@ and     infixexp () = (HSY.op_app <$> (~$ lexp) <*> qop <*> (~$ infixexp))
 (* 	| 	fexp      *)
 and     lexp () =
   (HSY.lambda
-   <$> (form_prepend (just_tk TK.KS_B_SLASH) (l1_list_form (l1_some apat)))
-   <*> ~$ exp)
+   <$> (form_prepend (just_tk TK.KS_B_SLASH) (l1_list_form (l1_some (~$ apat))))
+   <*> r_arrow *> ~$ exp)
   <|> (just_tk TK.K_LET **> (HSY.let_ <$> decls <*> (just_tk TK.K_IN **> ~$ exp)))
     <|> (just_tk TK.K_IF **> (HSY.if_ <$> (~$ exp <* opt_semi)
                               <*> (just_tk TK.K_THEN **> ~$ exp <* opt_semi)
