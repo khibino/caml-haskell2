@@ -204,63 +204,7 @@ let gcon =
       <|> qcon
 
 
-
-(* 10.5  Context-Free Syntax *)
-
-(* module 	 → 	module modid [exports] where body       *)
-(* 	| 	body      *)
-(* body 	→ 	{ impdecls ; topdecls }      *)
-(* 	| 	{ impdecls }      *)
-(* 	| 	{ topdecls }      *)
- 
-(* impdecls 	→ 	impdecl1 ; … ; impdecln     	(n ≥ 1) *)
- 
-(* exports 	→ 	( export1 , … , exportn [ , ] )     	(n ≥ 0) *)
- 
-(* export 	→ 	qvar      *)
-(* 	| 	qtycon [(..) | ( cname1 , … , cnamen )]     	(n ≥ 0) *)
-(* 	| 	qtycls [(..) | ( qvar1 , … , qvarn )]     	(n ≥ 0) *)
-(* 	| 	module modid      *)
- 
-(* impdecl 	→ 	import [qualified] modid [as modid] [impspec]      *)
-(* 	| 	    	(empty declaration) *)
- 
-(* impspec 	→ 	( import1 , … , importn [ , ] )     	(n ≥ 0) *)
-(* 	| 	hiding ( import1 , … , importn [ , ] )     	(n ≥ 0) *)
- 
-(* import 	→ 	var      *)
-(* 	| 	tycon [ (..) | ( cname1 , … , cnamen )]     	(n ≥ 0) *)
-(* 	| 	tycls [(..) | ( var1 , … , varn )]     	(n ≥ 0) *)
-(* cname 	→ 	var | con      *)
- 
-(* topdecls 	→ 	topdecl1 ; … ; topdecln     	(n ≥ 0) *)
-(* topdecl 	→ 	type simpletype = type      *)
-(* 	| 	data [context =>] simpletype [= constrs] [deriving]      *)
-(* 	| 	newtype [context =>] simpletype = newconstr [deriving]     *)
-(* 	| 	class [scontext =>] tycls tyvar [where cdecls]      *)
-(* 	| 	instance [scontext =>] qtycls inst [where idecls]      *)
-(* 	| 	default (type1 , … , typen)     	(n ≥ 0) *)
-(* 	| 	foreign fdecl      *)
-(* 	| 	decl      *)
- 
-(* decl 	→ 	gendecl      *)
-(* 	| 	(funlhs | pat) rhs      *)
-let decl = p_fix_later
- 
-(* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
-let decls = braced (list_form (separated decl semi))
-
-(* cdecls 	→ 	{ cdecl1 ; … ; cdecln }     	(n ≥ 0) *)
-(* cdecl 	→ 	gendecl      *)
-(* 	| 	(funlhs | var) rhs      *)
- 
-(* idecls 	→ 	{ idecl1 ; … ; idecln }     	(n ≥ 0) *)
-(* idecl 	→ 	(funlhs | var) rhs      *)
-(* 	| 	    	(empty) *)
- 
-(* gendecl 	→ 	vars :: [context =>] type     	(type signature) *)
-(* 	| 	fixity [integer] ops     	(fixity declaration) *)
-(* 	| 	    	(empty declaration) *)
+(* *)
  
 (* ops 	→ 	op1 , … , opn     	(n ≥ 1) *)
 (* vars 	→ 	var1 , …, varn     	(n ≥ 1) *)
@@ -449,7 +393,7 @@ and     lexp () =
   (HSY.lambda
    <$> (form_prepend (just_tk TK.KS_B_SLASH) (l1_list_form (l1_some (~$ apat))))
    <*> r_arrow *> ~$ exp)
-  <|> (just_tk TK.K_LET **> (HSY.let_ <$> decls <*> (just_tk TK.K_IN **> ~$ exp)))
+  <|> (just_tk TK.K_LET **> (HSY.let_ <$> ~$ decls <*> (just_tk TK.K_IN **> ~$ exp)))
     <|> (just_tk TK.K_IF **> (HSY.if_ <$> (~$ exp <* opt_semi)
                               <*> (just_tk TK.K_THEN **> ~$ exp <* opt_semi)
                               <*> (just_tk TK.K_ELSE **> ~$ exp)))
@@ -511,6 +455,69 @@ and     stmt = p_fix_later
  
 (* fbind 	→ 	qvar = exp      *)
 and     fbind () = HSY.fbind <$> qvar <*> (just_tk TK.KS_EQ *> ~$ exp)
+ 
+
+(* 10.5  Context-Free Syntax *)
+(* Decls *)
+
+(* decl 	→ 	gendecl      *)
+(* 	| 	(funlhs | pat) rhs      *)
+and     decl = p_fix_later
+ 
+(* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
+and     decls () = braced (list_form (separated decl semi))
+
+(* cdecls 	→ 	{ cdecl1 ; … ; cdecln }     	(n ≥ 0) *)
+(* cdecl 	→ 	gendecl      *)
+(* 	| 	(funlhs | var) rhs      *)
+ 
+(* idecls 	→ 	{ idecl1 ; … ; idecln }     	(n ≥ 0) *)
+(* idecl 	→ 	(funlhs | var) rhs      *)
+(* 	| 	    	(empty) *)
+ 
+(* gendecl 	→ 	vars :: [context =>] type     	(type signature) *)
+(* 	| 	fixity [integer] ops     	(fixity declaration) *)
+(* 	| 	    	(empty declaration) *)
+
+
+(* 10.5  Context-Free Syntax *)
+(* Top level *)
+
+(* module 	 → 	module modid [exports] where body       *)
+(* 	| 	body      *)
+(* body 	→ 	{ impdecls ; topdecls }      *)
+(* 	| 	{ impdecls }      *)
+(* 	| 	{ topdecls }      *)
+ 
+(* impdecls 	→ 	impdecl1 ; … ; impdecln     	(n ≥ 1) *)
+ 
+(* exports 	→ 	( export1 , … , exportn [ , ] )     	(n ≥ 0) *)
+ 
+(* export 	→ 	qvar      *)
+(* 	| 	qtycon [(..) | ( cname1 , … , cnamen )]     	(n ≥ 0) *)
+(* 	| 	qtycls [(..) | ( qvar1 , … , qvarn )]     	(n ≥ 0) *)
+(* 	| 	module modid      *)
+ 
+(* impdecl 	→ 	import [qualified] modid [as modid] [impspec]      *)
+(* 	| 	    	(empty declaration) *)
+ 
+(* impspec 	→ 	( import1 , … , importn [ , ] )     	(n ≥ 0) *)
+(* 	| 	hiding ( import1 , … , importn [ , ] )     	(n ≥ 0) *)
+ 
+(* import 	→ 	var      *)
+(* 	| 	tycon [ (..) | ( cname1 , … , cnamen )]     	(n ≥ 0) *)
+(* 	| 	tycls [(..) | ( var1 , … , varn )]     	(n ≥ 0) *)
+(* cname 	→ 	var | con      *)
+ 
+(* topdecls 	→ 	topdecl1 ; … ; topdecln     	(n ≥ 0) *)
+(* topdecl 	→ 	type simpletype = type      *)
+(* 	| 	data [context =>] simpletype [= constrs] [deriving]      *)
+(* 	| 	newtype [context =>] simpletype = newconstr [deriving]     *)
+(* 	| 	class [scontext =>] tycls tyvar [where cdecls]      *)
+(* 	| 	instance [scontext =>] qtycls inst [where idecls]      *)
+(* 	| 	default (type1 , … , typen)     	(n ≥ 0) *)
+(* 	| 	foreign fdecl      *)
+(* 	| 	decl      *)
  
 
 let drop_any    = pred_tk (fun _ -> true)
