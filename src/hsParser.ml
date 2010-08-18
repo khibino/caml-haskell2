@@ -280,7 +280,7 @@ let     gtycon =
   HSY.gt_qtycon <$> qtycon
   <|> form_parened (pure HSY.GT_Unit)
     <|> form_bracketed (pure HSY.GT_List)
-      <|> form_parened (r_arrow *> pure HSY.GT_Arrow)
+      <|> (HSY.gt_arrow <$> parened r_arrow)
         <|> (HSY.gt_tuple <$> form_parened (~$ commas1))
 
 let rec dummy_type_top () = p_fix_later
@@ -368,7 +368,7 @@ let context =  list_form (Data.cons_nil <$> clazz)
 (* pat 	→ 	lpat qconop pat     	(infix constructor) *)
 (* 	| 	- (integer | float)     	(negative literal) *)
 (* 	| 	lpat      *)
-let rec pat  = p_fix_later
+let rec pat () = p_fix_later
  
 (* lpat 	→ 	apat      *)
 (* 	| 	- (integer | float)     	(negative literal) *)
@@ -384,9 +384,18 @@ and     lpat = p_fix_later
 (* 	| 	( pat1 , … , patk )     	(tuple pattern, k ≥ 2) *)
 (* 	| 	[ pat1 , … , patk ]     	(list pattern, k ≥ 1) *)
 (* 	| 	~ apat     	(irrefutable pattern) *)
+and     comma_patl_1 () = l1_separated (~$ pat) comma
+and     comma_patl_2 () = Data.l1_cons <$> ~$ pat <*> (comma *> ~$ comma_patl_1)
 and     apat () =
   (HSY.ap_var <$> var <*> ~? (just_tk TK.KS_AT *> ~$ apat))
   <|> (HSY.ap_gcon <$> gcon)
+    <|> (HSY.ap_qcon <$> qcon <*> braced (list_form (some (~$ fpat))))
+      <|> (HSY.ap_lit <$> literal)
+        <|> (HSY.ap_all <$> just_tk TK.K_WILDCARD)
+          <|> (HSY.ap_paren <$> parened (~$ pat))
+            <|> (HSY.ap_tuple <$> parened (l1_list_form (~$ comma_patl_2)))
+              <|> (HSY.ap_list <$> parened (l1_list_form (~$ comma_patl_1)))
+                <|> (HSY.ap_irr <$> (just_tk TK.KS_TILDE *> ~$ apat))
  
 (* fpat 	→ 	qvar = pat      *)
 and     fpat () = p_fix_later
@@ -463,10 +472,8 @@ and     fexp () = HSY.fexp_of_aexp_list <$> l1_form (l1_some (~$ aexp))
 (* 	| 	( qop⟨-⟩ infixexp )     	(right section) *)
 (* 	| 	qcon { fbind1 , … , fbindn }     	(labeled construction, n ≥ 0) *)
 (* 	| 	aexp⟨qcon⟩ { fbind1 , … , fbindn }     	(labeled update, n  ≥  1) *)
-and     comma_expl_1 () =
-  l1_separated (~$ exp) comma
-and     comma_expl_2 () =
-  Data.l1_cons <$> ~$ exp <*> (comma *> ~$ comma_expl_1)
+and     comma_expl_1 () = l1_separated (~$ exp) comma
+and     comma_expl_2 () = Data.l1_cons <$> ~$ exp <*> (comma *> ~$ comma_expl_1)
 and     aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> literal)
   <|> (HSY.paren <$> parened (~$ exp))
     <|> (HSY.tuple <$> parened (l1_list_form (~$ comma_expl_2)))

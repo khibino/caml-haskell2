@@ -147,7 +147,11 @@ let btype_of_atype_list
 
 let gt_qtycon = TK.with_region (fun id -> GT_QTycon id)
 let gt_tuple  = TK.with_region (fun i -> GT_Tuple i)
-
+(* GT_Unit *)
+(* GT_List *)
+let gt_arrow : (TK.typ * TK.region) -> (gtycon * TK.region)
+  = TK.with_region_just GT_Arrow
+  
 let at_gtc   = TK.with_region (fun gtc -> AT_gtc gtc)
 let at_tyvar = TK.with_region (fun tyvar -> AT_tyvar tyvar)
 let at_tuple = TK.with_region (fun types -> AT_tuple (Data.l1_list types))
@@ -176,11 +180,23 @@ type 'pat lpat = fix_later
 
 type pat  = fix_later
 
+let apat_with_region
+    : ('a -> pat apat) -> ('a * TK.region) -> (pat apat * TK.region)
+  = TK.with_region
+
 let ap_var var = function
   | Some as_p -> comp2_region var as_p (fun a b -> AP_var (a, Some b))
   | None      -> (AP_var (fst var, None), snd var)
 
 let ap_gcon = TK.with_region (fun id -> AP_gcon id)
+let ap_qcon id flist = comp2_region id flist (fun a b -> AP_qcon (a, b))
+let ap_lit  = TK.with_region (fun lit -> AP_lit lit)
+let ap_all : (TK.typ * TK.region) -> (pat apat * TK.region)
+  = TK.with_region_just AP_all
+let ap_paren = apat_with_region (fun pat -> AP_paren pat)
+let ap_tuple = apat_with_region (fun pl -> AP_tuple pl)
+let ap_list  = apat_with_region (fun pl -> AP_list  pl)
+let ap_irr   = apat_with_region (fun apat -> AP_irr apat)
 
 type 'infexp exp = 'infexp * (context option * typ) option
 

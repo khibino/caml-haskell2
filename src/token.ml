@@ -133,6 +133,7 @@ type typ =
 
 type t = (typ * region)
 
+let with_region_just v (_, reg) = (v, reg)
 let with_region : ('a -> 'b) -> ('a * region) -> ('b * region) = Data.with_snd
 
 let to_string = function
