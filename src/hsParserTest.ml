@@ -13,3 +13,4 @@ let parse_in chan_in seq_parser =
 let do0 () = parse_in stdin P.test_s0
 let do1 () = parse_in stdin P.test_s1
 let do2 () = parse_in stdin P.test_s2
+let do3 () = parse_in stdin P.test_s3

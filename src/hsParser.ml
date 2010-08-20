@@ -332,8 +332,11 @@ and     comma_patl_1 () = l1_separated (~$ pat) comma
 and     comma_patl_2 () = Data.l1_cons <$> ~$ pat <*> (comma *> ~$ comma_patl_1)
 and     apat () =
   (HSY.ap_var <$> var <*> ~? (just_tk TK.KS_AT *> ~$ apat))
-  <|> (HSY.ap_gcon <$> gcon)
-    <|> (HSY.ap_qcon <$> qcon <*> braced (list_form (some (~$ fpat))))
+  <|> (HSY.ap_qcon <$> qcon <*> braced (list_form (separated (~$ fpat) comma)))
+    (* Simpler syntax must be tried later *)
+    (* より単純な文法は後にチェックしなければならない *)
+    (* * gcon は labeled pattern の qcon にマッチしてしまう *)
+    <|> (HSY.ap_gcon <$> gcon)
       <|> (HSY.ap_lit <$> literal)
         <|> (HSY.ap_all <$> just_tk TK.K_WILDCARD)
           <|> (HSY.ap_paren <$> parened (~$ pat))
@@ -342,7 +345,7 @@ and     apat () =
                 <|> (HSY.ap_irr <$> (just_tk TK.KS_TILDE *> ~$ apat))
  
 (* fpat 	→ 	qvar = pat      *)
-and     fpat () = p_fix_later
+and     fpat () = HSY.fpat <$> qvar <*> (just_tk TK.KS_EQ *> ~$ pat)
 
 
 (* 10.5  Context-Free Syntax
@@ -418,18 +421,34 @@ and     fexp () = HSY.fexp_of_aexp_list <$> l1_form (l1_some (~$ aexp))
 (* 	| 	aexp⟨qcon⟩ { fbind1 , … , fbindn }     	(labeled update, n  ≥  1) *)
 and     comma_expl_1 () = l1_separated (~$ exp) comma
 and     comma_expl_2 () = Data.l1_cons <$> ~$ exp <*> (comma *> ~$ comma_expl_1)
-and     aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> literal)
-  <|> (HSY.paren <$> parened (~$ exp))
-    <|> (HSY.tuple <$> parened (l1_list_form (~$ comma_expl_2)))
-      <|> (HSY.list <$> bracketed (l1_list_form (~$ comma_expl_1)))
-        <|> bracketed (HSY.aseq <$> ~$ exp <*> ~? (comma *> ~$ exp) <*> (just_tk TK.KS_DOTDOT *> ~? ~$ exp))
-          <|> bracketed (HSY.comp
-                         <$> ~$ exp
-                         <*> (just_tk TK.KS_BAR **> l1_list_form (l1_separated qual comma)))
-            <|> parened (HSY.left_sec <$> ~$ infixexp <*> qop)
-              <|> parened (HSY.right_sec <$> (~! (just_tk TK.KS_MINUS) *> qop) <*> ~$ infixexp)
-                <|> (HSY.lbl_cons <$> qcon <*> braced (list_form (separated (~$ fbind) comma)))
-                  <|> (HSY.lbl_upd <$> qcon <*> braced (l1_list_form (l1_separated (~$ fbind) comma)))
+and     aexp_without_lu () = 
+  (HSY.lbl_cons <$> qcon <*> braced (list_form (separated (~$ fbind) comma)))
+  (* <|> (HSY.lbl_upd <$> (~! qcon *> ~$ aexp) <*> braced (l1_list_form (l1_separated (~$ fbind) comma))) *)
+  (* Simpler syntax must be tried later *)
+  (* より単純な文法は後にチェックしなければならない *)
+  (* * gcon は labeled construction の qcon にマッチしてしまう *)
+  (* * var は labeled construction の qcon にマッチしてしまう
+       が そもそも左再帰なので除去するために labeled update だけ分けた   *)
+  <|> (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> literal)
+    <|> (HSY.paren <$> parened (~$ exp))
+      <|> (HSY.tuple <$> parened (l1_list_form (~$ comma_expl_2)))
+        <|> (HSY.list <$> bracketed (l1_list_form (~$ comma_expl_1)))
+          <|> bracketed (HSY.aseq <$> ~$ exp <*> ~? (comma *> ~$ exp) <*> (just_tk TK.KS_DOTDOT *> ~? ~$ exp))
+            <|> bracketed (HSY.comp
+                           <$> ~$ exp
+                           <*> (just_tk TK.KS_BAR **> l1_list_form (l1_separated qual comma)))
+              <|> parened (HSY.left_sec <$> ~$ infixexp <*> qop)
+                <|> parened (HSY.right_sec <$> (~! (just_tk TK.KS_MINUS) *> qop) <*> ~$ infixexp)
+
+
+
+and    braced_fbind_list_1 () = braced (l1_list_form (l1_separated (~$ fbind) comma))
+
+and    aexp () =
+  (HSY.lbl_upd_of_fbinds_list
+   <$> (~! qcon *> ~$ aexp_without_lu)
+   <*> some (~$ braced_fbind_list_1))
+  <|> ~$ aexp_without_lu
 
 (* qual 	→ 	pat <- exp     	(generator) *)
 (* 	| 	let decls     	(local declaration) *)
@@ -527,11 +546,14 @@ let test_s0 = drop_any *>
   some (qvar <|> gconsym <|> qconop <|> qvarop)
 
 (*  *)
-let test_s1 : (TK.t, HSY.infexp * TK.region) parser =
-  (fst <$> drop_any) *> ~$ infixexp
+let test_s1 : (TK.t, HSY.infexp HSY.exp * TK.region) parser =
+  (fst <$> drop_any) *> ~$ exp
 
 (*let test_s1 : (TK.t, HSY.infexp HSY.lexp * TK.region) parser =
   (fst <$> drop_any) *> ~$ lexp*)
 
 let test_s2 : (TK.t, HSY.typ * TK.region) parser =
   (fst <$> drop_any) *> ~$ typ
+
+let test_s3 : (TK.t, HSY.pat HSY.apat * TK.region) parser =
+  (fst <$> drop_any) *> ~$ apat

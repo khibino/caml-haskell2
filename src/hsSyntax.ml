@@ -166,7 +166,7 @@ let cls = tuple2_region
 
 type context = cls list
 
-type 'pat fpat = fix_later
+type 'pat fpat = (id * 'pat)
 
 type 'pat apat =
   | AP_var  of (SYM.t * 'pat apat option)
@@ -182,6 +182,8 @@ type 'pat apat =
 type 'pat lpat = fix_later
 
 type pat  = fix_later
+
+let fpat = tuple2_region
 
 let ap_var var = function
   | Some as_p -> comp2_region var as_p (fun a b -> AP_var (a, Some b))
@@ -227,7 +229,7 @@ type 'infexp aexp =
   | LeftS  of 'infexp * id (* left section*)
   | RightS of id * 'infexp (* right section*)
   | ConsL  of id * 'infexp fbind list (* labeled construction *)
-  | UpdL   of id * 'infexp fbind list (* labeled update *)
+  | UpdL   of 'infexp aexp * 'infexp fbind list (* labeled update *)
 
 (* 以下の実装のように引数を一つづつ部分適用するのは効率が良くないはず。
  * 一度に複数の引数を適用するように変更するかも。
@@ -272,7 +274,10 @@ let comp exp ql = comp2_region exp ql (fun a b -> Comp (a, b))
 let left_sec  infexp id = comp2_region infexp id (fun a b -> LeftS (a, b))
 let right_sec id infexp = comp2_region id infexp (fun a b -> RightS (a, b))
 let lbl_cons id bl = comp2_region id bl (fun a b -> ConsL (a, b))
-let lbl_upd  id bl = comp2_region id bl (fun a b -> UpdL  (a, b))
+let lbl_upd  aexp bl = comp2_region aexp bl (fun a b -> UpdL  (a, b))
+
+let lbl_upd_of_fbinds_list aexp bl =
+  L.fold_left lbl_upd aexp bl
 
 (* fexp construction *)
 let fexp_of_aexp_list
