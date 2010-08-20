@@ -1,8 +1,14 @@
 
+(* pair functions *)
 let tuple2 = fun a b -> (a, b)
 
 let with_snd : ('a -> 'b) -> ('a * 'c) -> ('b * 'c) = fun f (a, b) -> (f a, b)
 let with_fst : ('a -> 'b) -> ('c * 'a) -> ('c * 'b) = fun f (a, b) -> (a, f b)
+
+(* option functions *)
+let with_option : ('a -> 'b) -> 'a option -> 'b option = fun f -> function
+  | Some x -> Some (f x)
+  | None   -> None
 
 module L = List
 

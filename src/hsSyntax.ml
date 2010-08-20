@@ -110,6 +110,9 @@ let comp2_region a b cons =
 let tuple2_region a b =
   comp2_region a b Data.tuple2
 
+(*let comp3_region a b c cons =
+  TK.form_between a (cons (fst a) (fst b) (fst c)) c*)
+
 type fix_later = unit
 
 type gtycon =
@@ -180,10 +183,6 @@ type 'pat lpat = fix_later
 
 type pat  = fix_later
 
-let apat_with_region
-    : ('a -> pat apat) -> ('a * TK.region) -> (pat apat * TK.region)
-  = TK.with_region
-
 let ap_var var = function
   | Some as_p -> comp2_region var as_p (fun a b -> AP_var (a, Some b))
   | None      -> (AP_var (fst var, None), snd var)
@@ -193,10 +192,10 @@ let ap_qcon id flist = comp2_region id flist (fun a b -> AP_qcon (a, b))
 let ap_lit  = TK.with_region (fun lit -> AP_lit lit)
 let ap_all : (TK.typ * TK.region) -> (pat apat * TK.region)
   = TK.with_region_just AP_all
-let ap_paren = apat_with_region (fun pat -> AP_paren pat)
-let ap_tuple = apat_with_region (fun pl -> AP_tuple pl)
-let ap_list  = apat_with_region (fun pl -> AP_list  pl)
-let ap_irr   = apat_with_region (fun apat -> AP_irr apat)
+let ap_paren a = TK.with_region (fun pat -> AP_paren pat) a
+let ap_tuple a = TK.with_region (fun pl -> AP_tuple pl) a
+let ap_list  a = TK.with_region (fun pl -> AP_list  pl) a
+let ap_irr   a = TK.with_region (fun apat -> AP_irr apat) a
 
 type 'infexp exp = 'infexp * (context option * typ) option
 
@@ -263,7 +262,12 @@ let paren = TK.with_region (fun exp -> (Paren exp : infexp aexp))
 let tuple = TK.with_region (fun el  -> (Tuple el : infexp aexp))
 let list  = TK.with_region (fun el  -> (List el : infexp aexp))
 
-(* let comp exp ql = TK.form_between exp (Comp (fst exp, fst ql)) ql *)
+(* arithmetic sequence はブラケット [ ] の region となるので手抜き  *)
+let aseq _1st _2nd last =
+  TK.with_region (fun a -> ASeq (a,
+                                 Data.with_option fst _2nd,
+                                 Data.with_option fst last)) _1st
+
 let comp exp ql = comp2_region exp ql (fun a b -> Comp (a, b))
 let left_sec  infexp id = comp2_region infexp id (fun a b -> LeftS (a, b))
 let right_sec id infexp = comp2_region id infexp (fun a b -> RightS (a, b))

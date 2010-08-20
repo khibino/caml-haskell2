@@ -422,13 +422,14 @@ and     aexp () = (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> lit
   <|> (HSY.paren <$> parened (~$ exp))
     <|> (HSY.tuple <$> parened (l1_list_form (~$ comma_expl_2)))
       <|> (HSY.list <$> bracketed (l1_list_form (~$ comma_expl_1)))
-        <|> bracketed (HSY.comp
-                       <$> ~$ exp
-                       <*> (just_tk TK.KS_BAR **> l1_list_form (l1_separated qual comma)))
-          <|> parened (HSY.left_sec <$> ~$ infixexp <*> qop)
-            <|> parened (HSY.right_sec <$> (~! (just_tk TK.KS_MINUS) *> qop) <*> ~$ infixexp)
-              <|> (HSY.lbl_cons <$> qcon <*> braced (list_form (separated (~$ fbind) comma)))
-                <|> (HSY.lbl_upd <$> qcon <*> braced (l1_list_form (l1_separated (~$ fbind) comma)))
+        <|> bracketed (HSY.aseq <$> ~$ exp <*> ~? (comma *> ~$ exp) <*> (just_tk TK.KS_DOTDOT *> ~? ~$ exp))
+          <|> bracketed (HSY.comp
+                         <$> ~$ exp
+                         <*> (just_tk TK.KS_BAR **> l1_list_form (l1_separated qual comma)))
+            <|> parened (HSY.left_sec <$> ~$ infixexp <*> qop)
+              <|> parened (HSY.right_sec <$> (~! (just_tk TK.KS_MINUS) *> qop) <*> ~$ infixexp)
+                <|> (HSY.lbl_cons <$> qcon <*> braced (list_form (separated (~$ fbind) comma)))
+                  <|> (HSY.lbl_upd <$> qcon <*> braced (l1_list_form (l1_separated (~$ fbind) comma)))
 
 (* qual 	→ 	pat <- exp     	(generator) *)
 (* 	| 	let decls     	(local declaration) *)
