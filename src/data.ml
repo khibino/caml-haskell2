@@ -17,7 +17,7 @@ let rec last = function
   | [_] as v  -> Some v
   | _ :: rest -> last rest
 
-let init l = match last l with
+let last' l = match last l with
   | None   -> failwith "init"
   | Some v -> v
 

@@ -5,6 +5,10 @@ module L = List
 module SYM = Symbol
 module TK = Token
 
+type hs_integer = int64
+type hs_float   = float
+type hs_string  = int array
+
 type sp_con =
   | Colon
   | Unit
@@ -179,7 +183,11 @@ type 'pat apat =
   | AP_list  of 'pat list
   | AP_irr   of 'pat apat
 
-type 'pat lpat = fix_later
+type 'pat lpat =
+  | LP_apat of 'pat apat
+  | LP_neg_int of hs_integer
+  | LP_neg_float of hs_float
+  | LP_gcon of (gcon * 'pat apat list)
 
 type pat  = fix_later
 
@@ -198,6 +206,11 @@ let ap_paren a = TK.with_region (fun pat -> AP_paren pat) a
 let ap_tuple a = TK.with_region (fun pl -> AP_tuple pl) a
 let ap_list  a = TK.with_region (fun pl -> AP_list  pl) a
 let ap_irr   a = TK.with_region (fun apat -> AP_irr apat) a
+
+let lp_apat apat = TK.with_region (fun apat -> LP_apat apat) apat
+let lp_neg_int = TK.with_region (fun i -> LP_neg_int (Int64.neg i))
+let lp_neg_float = TK.with_region (fun f -> LP_neg_float (~-. f))
+let lp_gcon gcon pl = comp2_region gcon pl (fun a b -> LP_gcon (a, b))
 
 type 'infexp exp = 'infexp * (context option * typ) option
 

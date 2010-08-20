@@ -68,7 +68,7 @@ let list_form pl =
   (function
     | []         -> ([], region_dummy)
     | [(e, reg)] -> ([e], reg)
-    | (er :: _) as ers -> TK.form_between er (L.map fst ers) (L.hd (Data.init ers)))
+    | (er :: _) as ers -> TK.form_between er (L.map fst ers) (L.hd (Data.last' ers)))
   <$> pl
 
 (* 長さ1以上のリスト 意図的に0以上のリストと型が異なるようにしている *)
@@ -77,7 +77,7 @@ let l1_some p = Data.tuple2 <$> p <*> many p
 let l1_form pl1 =
   (function
     | ((e, reg), []) -> ((e, []), reg)
-    | (er, ers)  -> TK.form_between er (fst er, (L.map fst ers)) (L.hd (Data.init ers)))
+    | (er, ers)  -> TK.form_between er (fst er, (L.map fst ers)) (L.hd (Data.last' ers)))
    <$> pl1
 
 let l1_list_form pl1 = TK.with_region Data.l1_list <$> l1_form pl1
@@ -156,7 +156,8 @@ let qconsym = qual_id_tk (function
   | _ -> None)
   <|> (HPST.q_not_qual <$> consym)
 
-let integer = pred_tk (function | TK.L_INTEGER _ -> true | _ -> false)
+let integer = untag_tk (function | TK.L_INTEGER i -> Some i | _ -> None)
+let float   = untag_tk (function | TK.L_FLOAT f -> Some f | _ -> None)
 
 
 (* 10.5  Context-Free Syntax
@@ -317,8 +318,12 @@ let rec pat () = p_fix_later
 (* lpat 	→ 	apat      *)
 (* 	| 	- (integer | float)     	(negative literal) *)
 (* 	| 	gcon apat1 … apatk     	(arity gcon  =  k, k ≥ 1) *)
-and     lpat = p_fix_later
- 
+and     lpat () =
+  (HSY.lp_apat <$> ~$ apat)
+  <|> (just_tk TK.KS_MINUS *> ((HSY.lp_neg_int <$> integer)
+                               <|> (HSY.lp_neg_float <$> float)))
+    <|> (HSY.lp_gcon <$> gcon <*> l1_list_form (l1_some (~$ apat)))
+
 (* apat 	→ 	var [ @ apat]     	(as pattern) *)
 (* 	| 	gcon     	(arity gcon  =  0) *)
 (* 	| 	qcon { fpat1 , … , fpatk }     	(labeled pattern, k ≥ 0) *)
