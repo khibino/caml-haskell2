@@ -306,7 +306,7 @@ let comp exp ql = comp2_region exp ql (fun a b -> Comp (a, b))
 let left_sec  infexp id = comp2_region infexp id (fun a b -> LeftS (a, b))
 let right_sec id infexp = comp2_region id infexp (fun a b -> RightS (a, b))
 let lbl_cons id bl = comp2_region id bl (fun a b -> ConsL (a, b))
-let lbl_upd  aexp bl = comp2_region aexp bl (fun a b -> UpdL  (a, b))
+let lbl_upd  aexp bl = comp2_region aexp bl (fun a b -> UpdL  (a, Data.l1_list b))
 
 let lbl_upd_of_fbinds_list aexp bl =
   L.fold_left lbl_upd aexp bl
