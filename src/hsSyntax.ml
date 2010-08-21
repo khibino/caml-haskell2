@@ -108,6 +108,12 @@ type lit =
   | Int  of int64
   | Flo  of float
 
+
+type fixity =
+  | I_left
+  | I_right
+  | I_infix
+
 let comp2_region a b cons =
   TK.form_between a (cons (fst a) (fst b)) b
 

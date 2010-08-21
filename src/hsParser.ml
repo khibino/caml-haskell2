@@ -209,7 +209,14 @@ let gcon =
  
 (* ops 	→ 	op1 , … , opn     	(n ≥ 1) *)
 (* vars 	→ 	var1 , …, varn     	(n ≥ 1) *)
+
+
 (* fixity 	→ 	infixl | infixr | infix      *)
+let fixity = untag_tk (function
+  | TK.K_INFIX  -> Some HSY.I_infix
+  | TK.K_INFIXL -> Some HSY.I_left
+  | TK.K_INFIXR -> Some HSY.I_right
+  | _           -> None)
 
 (* 10.5  Context-Free Syntax
    -- type から参照される要素を先に定義 -- 
