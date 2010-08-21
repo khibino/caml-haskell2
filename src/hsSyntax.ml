@@ -189,7 +189,11 @@ type 'pat lpat =
   | LP_neg_float of hs_float
   | LP_gcon of (gcon * 'pat apat list)
 
-type pat  = fix_later
+type pat  =
+  | P_infix of pat lpat * id * pat
+  | P_neg_int of hs_integer
+  | P_neg_float of hs_float
+  | P_lpat of pat lpat
 
 let fpat = tuple2_region
 
@@ -211,6 +215,12 @@ let lp_apat apat = TK.with_region (fun apat -> LP_apat apat) apat
 let lp_neg_int = TK.with_region (fun i -> LP_neg_int (Int64.neg i))
 let lp_neg_float = TK.with_region (fun f -> LP_neg_float (~-. f))
 let lp_gcon gcon pl = comp2_region gcon pl (fun a b -> LP_gcon (a, b))
+
+let p_infix lpat qconop pat =
+  TK.form_between lpat (P_infix (fst lpat, fst qconop, fst pat)) pat
+let p_neg_int = TK.with_region (fun i -> P_neg_int (Int64.neg i))
+let p_neg_float = TK.with_region (fun f -> P_neg_float (~-. f))
+let p_lpat = TK.with_region (fun lp -> P_lpat lp)
 
 type 'infexp exp = 'infexp * (context option * typ) option
 
@@ -279,9 +289,12 @@ let list  = TK.with_region (fun el  -> (List el : infexp aexp))
 
 (* arithmetic sequence はブラケット [ ] の region となるので手抜き  *)
 let aseq _1st _2nd last =
-  TK.with_region (fun a -> ASeq (a,
-                                 Data.with_option fst _2nd,
-                                 Data.with_option fst last)) _1st
+  TK.form_between
+    _1st
+    (ASeq (fst _1st,
+           Data.with_option fst _2nd,
+           Data.with_option fst last))
+    _1st
 
 let comp exp ql = comp2_region exp ql (fun a b -> Comp (a, b))
 let left_sec  infexp id = comp2_region infexp id (fun a b -> LeftS (a, b))

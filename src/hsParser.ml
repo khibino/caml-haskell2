@@ -313,7 +313,11 @@ let context =  list_form (Data.cons_nil <$> clazz)
 (* pat 	→ 	lpat qconop pat     	(infix constructor) *)
 (* 	| 	- (integer | float)     	(negative literal) *)
 (* 	| 	lpat      *)
-let rec pat () = p_fix_later
+let rec pat () =
+  (HSY.p_infix <$> ~$ lpat <*> qconop <*> ~$ pat)
+    <|> (just_tk TK.KS_MINUS *> ((HSY.p_neg_int <$> integer)
+                                 <|> (HSY.p_neg_float <$> float)))
+      <|> (HSY.p_lpat <$> ~$ lpat)
  
 (* lpat 	→ 	apat      *)
 (* 	| 	- (integer | float)     	(negative literal) *)
