@@ -213,14 +213,14 @@ let ap_lit  = TK.with_region (fun lit -> AP_lit lit)
 let ap_all : (TK.typ * TK.region) -> (pat apat * TK.region)
   = TK.with_region_just AP_all
 let ap_paren a = TK.with_region (fun pat -> AP_paren pat) a
-let ap_tuple a = TK.with_region (fun pl -> AP_tuple pl) a
-let ap_list  a = TK.with_region (fun pl -> AP_list  pl) a
+let ap_tuple a = TK.with_region (fun pl -> AP_tuple (Data.l1_list pl)) a
+let ap_list  a = TK.with_region (fun pl -> AP_list  (Data.l1_list pl)) a
 let ap_irr   a = TK.with_region (fun apat -> AP_irr apat) a
 
 let lp_apat apat = TK.with_region (fun apat -> LP_apat apat) apat
 let lp_neg_int = TK.with_region (fun i -> LP_neg_int (Int64.neg i))
 let lp_neg_float = TK.with_region (fun f -> LP_neg_float (~-. f))
-let lp_gcon gcon pl = comp2_region gcon pl (fun a b -> LP_gcon (a, b))
+let lp_gcon gcon pl = comp2_region gcon pl (fun a b -> LP_gcon (a, Data.l1_list b))
 
 let p_infix lpat qconop pat =
   TK.form_between lpat (P_infix (fst lpat, fst qconop, fst pat)) pat
@@ -290,8 +290,8 @@ let var = TK.with_region (fun id -> Var id)
 let con = TK.with_region (fun id -> Con id)
 let lit = TK.with_region (fun lit -> Lit lit)
 let paren = TK.with_region (fun exp -> (Paren exp : infexp aexp))
-let tuple = TK.with_region (fun el  -> (Tuple el : infexp aexp))
-let list  = TK.with_region (fun el  -> (List el : infexp aexp))
+let tuple = TK.with_region (fun el  -> (Tuple (Data.l1_list el) : infexp aexp))
+let list  = TK.with_region (fun el  -> (List (Data.l1_list el) : infexp aexp))
 
 (* arithmetic sequence はブラケット [ ] の region となるので手抜き  *)
 let aseq _1st _2nd last =
@@ -302,7 +302,7 @@ let aseq _1st _2nd last =
            Data.with_option fst last))
     _1st
 
-let comp exp ql = comp2_region exp ql (fun a b -> Comp (a, b))
+let comp exp ql = comp2_region exp ql (fun a b -> Comp (a, Data.l1_list b))
 let left_sec  infexp id = comp2_region infexp id (fun a b -> LeftS (a, b))
 let right_sec id infexp = comp2_region id infexp (fun a b -> RightS (a, b))
 let lbl_cons id bl = comp2_region id bl (fun a b -> ConsL (a, b))
@@ -318,14 +318,14 @@ let fexp_of_aexp_list
     (e, es)  -> L.fold_left (fun fexp e -> FApp (fexp, e)) (AExp e) es)
 
 (* lexp construction *)
-let lambda patl exp (* : infexp lexp * TK.region *) =
-  comp2_region patl exp (fun a b -> Lambda (a, b))
-let let_ decll exp (* : infexp lexp * TK.region *) =
+let lambda patl exp =
+  comp2_region patl exp (fun a b -> Lambda (Data.l1_list a, b))
+let let_ decll exp =
   comp2_region decll exp (fun a b -> Let (a, b))
-let if_ p t e (* : infexp lexp * TK.region *) =
+let if_ p t e =
   TK.form_between p (If (fst p, fst t, fst e)) e
-let case exp altl (* : infexp lexp * TK.region *) =
-  comp2_region exp altl (fun a b -> Case (a, b))
+let case exp altl =
+  comp2_region exp altl (fun a b -> Case (a, Data.l1_list b))
 let do_ stmts exp = 
   comp2_region stmts exp (fun a b -> Do (a, b))
 let fexp : infexp fexp * TK.region -> infexp lexp * TK.region =

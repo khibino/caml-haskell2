@@ -77,6 +77,9 @@ module Raw = struct
   let rec l1_separated a d =
     (Data.l1_cons <$> a <*> (d *> ~$ (fun () -> l1_separated a d)))
     <|> (Data.l1_cons_nil <$> a)
+
+  let l1_separated_2 a d =
+    Data.l1_cons <$> a <*> (d *> l1_separated a d)
 end
 
 (* リストとなる構文要素 - 長さ0でも可 - 位置情報付き *)
@@ -98,6 +101,8 @@ let l1_form pl1 =
 
 let l1_some x = l1_form (Raw.l1_some x)
 let l1_separated a d = l1_form (Raw.l1_separated a d)
+
+let l1_separated_2 a d = l1_form (Raw.l1_separated_2 a d)
 
 let l1_list_form pl1 = TK.with_region Data.l1_list <$> l1_form pl1
 
@@ -268,9 +273,7 @@ and     atype () =
   (HSY.at_gtc <$> gtycon)
   <|> (HSY.at_tyvar <$> tyvar)
     <|> parened (HSY.at_tuple
-                 <$> l1_form (Data.l1_cons
-                              <$> ~$ typ
-                              <*> (comma *> Raw.l1_separated (~$ typ) comma)))
+                 <$> l1_separated_2 (~$ typ) comma)
       <|> bracketed (HSY.at_list <$> ~$ typ)
         <|> parened (HSY.at_paren <$> ~$ typ)
  
@@ -343,7 +346,7 @@ and     lpat () =
   (HSY.lp_apat <$> ~$ apat)
   <|> (just_tk TK.KS_MINUS *> ((HSY.lp_neg_int <$> integer)
                                <|> (HSY.lp_neg_float <$> float)))
-    <|> (HSY.lp_gcon <$> gcon <*> l1_list_form (Raw.l1_some (~$ apat)))
+    <|> (HSY.lp_gcon <$> gcon <*> l1_some (~$ apat))
 
 (* apat 	→ 	var [ @ apat]     	(as pattern) *)
 (* 	| 	gcon     	(arity gcon  =  0) *)
@@ -354,8 +357,8 @@ and     lpat () =
 (* 	| 	( pat1 , … , patk )     	(tuple pattern, k ≥ 2) *)
 (* 	| 	[ pat1 , … , patk ]     	(list pattern, k ≥ 1) *)
 (* 	| 	~ apat     	(irrefutable pattern) *)
-and     comma_patl_1 () = Raw.l1_separated (~$ pat) comma
-and     comma_patl_2 () = Data.l1_cons <$> ~$ pat <*> (comma *> ~$ comma_patl_1)
+and     comma_patl_1 () = l1_separated (~$ pat) comma
+and     comma_patl_2 () = l1_separated_2 (~$ pat) comma
 and     apat () =
   (HSY.ap_var <$> var <*> ~? (just_tk TK.KS_AT *> ~$ apat))
   <|> (HSY.ap_qcon <$> qcon <*> braced (separated (~$ fpat) comma))
@@ -366,8 +369,8 @@ and     apat () =
       <|> (HSY.ap_lit <$> literal)
         <|> (HSY.ap_all <$> just_tk TK.K_WILDCARD)
           <|> (HSY.ap_paren <$> parened (~$ pat))
-            <|> (HSY.ap_tuple <$> parened (l1_list_form (~$ comma_patl_2)))
-              <|> (HSY.ap_list <$> parened (l1_list_form (~$ comma_patl_1)))
+            <|> (HSY.ap_tuple <$> parened (~$ comma_patl_2))
+              <|> (HSY.ap_list <$> parened (~$ comma_patl_1))
                 <|> (HSY.ap_irr <$> (just_tk TK.KS_TILDE *> ~$ apat))
  
 (* fpat 	→ 	qvar = pat      *)
@@ -420,7 +423,7 @@ and     infixexp () = (HSY.op_app <$> (~$ lexp) <*> qop <*> (~$ infixexp))
 (* 	| 	fexp      *)
 and     lexp () =
   (HSY.lambda
-   <$> (form_prepend (just_tk TK.KS_B_SLASH) (l1_list_form (Raw.l1_some (~$ apat))))
+   <$> (just_tk TK.KS_B_SLASH **> l1_some (~$ apat))
    <*> r_arrow *> ~$ exp)
   <|> (just_tk TK.K_LET **> (HSY.let_ <$> ~$ decls <*> (just_tk TK.K_IN **> ~$ exp)))
     <|> (just_tk TK.K_IF **> (HSY.if_ <$> (~$ exp <* opt_semi)
@@ -445,11 +448,11 @@ and     fexp () = HSY.fexp_of_aexp_list <$> l1_some (~$ aexp)
 (* 	| 	( qop⟨-⟩ infixexp )     	(right section) *)
 (* 	| 	qcon { fbind1 , … , fbindn }     	(labeled construction, n ≥ 0) *)
 (* 	| 	aexp⟨qcon⟩ { fbind1 , … , fbindn }     	(labeled update, n  ≥  1) *)
-and     comma_expl_1 () = Raw.l1_separated (~$ exp) comma
-and     comma_expl_2 () = Data.l1_cons <$> ~$ exp <*> (comma *> ~$ comma_expl_1)
+and     comma_expl_1 () = l1_separated (~$ exp) comma
+and     comma_expl_2 () = l1_separated_2 (~$ exp) comma
 and     aexp_without_lu () = 
   (HSY.lbl_cons <$> qcon <*> braced (separated (~$ fbind) comma))
-  (* <|> (HSY.lbl_upd <$> (~! qcon *> ~$ aexp) <*> braced (l1_list_form (Raw.l1_separated (~$ fbind) comma))) *)
+  (* <|> (HSY.lbl_upd <$> (~! qcon *> ~$ aexp) <*> braced (l1_separated (~$ fbind) comma)) *)
   (* Simpler syntax must be tried later *)
   (* より単純な文法は後にチェックしなければならない *)
   (* * gcon は labeled construction の qcon にマッチしてしまう *)
@@ -457,12 +460,12 @@ and     aexp_without_lu () =
        が そもそも左再帰なので除去するために labeled update だけ分けた   *)
   <|> (HSY.var <$> qvar) <|> (HSY.con <$> gcon) <|> (HSY.lit <$> literal)
     <|> (HSY.paren <$> parened (~$ exp))
-      <|> (HSY.tuple <$> parened (l1_list_form (~$ comma_expl_2)))
-        <|> (HSY.list <$> bracketed (l1_list_form (~$ comma_expl_1)))
+      <|> (HSY.tuple <$> parened (~$ comma_expl_2))
+        <|> (HSY.list <$> bracketed (~$ comma_expl_1))
           <|> bracketed (HSY.aseq <$> ~$ exp <*> ~? (comma *> ~$ exp) <*> (just_tk TK.KS_DOTDOT *> ~? ~$ exp))
             <|> bracketed (HSY.comp
                            <$> ~$ exp
-                           <*> (just_tk TK.KS_BAR **> l1_list_form (Raw.l1_separated qual comma)))
+                           <*> (just_tk TK.KS_BAR **> l1_separated qual comma))
               <|> parened (HSY.left_sec <$> ~$ infixexp <*> qop)
                 <|> parened (HSY.right_sec <$> (~! (just_tk TK.KS_MINUS) *> qop) <*> ~$ infixexp)
 
@@ -487,7 +490,7 @@ and qual = p_fix_later
 and alt = p_fix_later
  
 (* alts 	→ 	alt1 ; … ; altn     	(n ≥ 1) *)
-and     alts () = l1_list_form (Raw.l1_separated alt semi)
+and     alts () = l1_separated alt semi
 
 (* gdpat 	→ 	guards -> exp [ gdpat ]      *)
  
