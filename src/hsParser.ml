@@ -397,6 +397,9 @@ let rec dummy_exp_top () = p_fix_later
 (* gdrhs 	→ 	guards = exp [gdrhs]      *)
  
 (* guards 	→ 	| guard1, …, guardn     	(n ≥ 1) *)
+and     guards () =
+  just_tk TK.KS_BAR *> l1_separated (~$ guard) comma
+  
 (* guard 	→ 	pat <- infixexp     	(pattern guard) *)
 (* 	| 	let decls     	(local declaration) *)
 (* 	| 	infixexp     	(boolean guard) *)
