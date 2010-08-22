@@ -224,8 +224,10 @@ let gcon =
 (* *)
  
 (* ops 	→ 	op1 , … , opn     	(n ≥ 1) *)
-(* vars 	→ 	var1 , …, varn     	(n ≥ 1) *)
+let ops = l1_separated op comma
 
+(* vars 	→ 	var1 , …, varn     	(n ≥ 1) *)
+let vars = l1_separated var comma
 
 (* fixity 	→ 	infixl | infixr | infix      *)
 let fixity = untag_tk (function
