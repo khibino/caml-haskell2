@@ -400,10 +400,14 @@ let rec dummy_exp_top () = p_fix_later
 (* guard 	→ 	pat <- infixexp     	(pattern guard) *)
 (* 	| 	let decls     	(local declaration) *)
 (* 	| 	infixexp     	(boolean guard) *)
+and     guard () =
+  HSY.gd_pat <$> ~$ pat <*> (r_arrow *> ~$ infixexp)
+  <|> (HSY.gd_let <$> ~$ decls)
+    <|> (HSY.gd_exp <$> ~$ infixexp)
 
 (* exp 	→ 	infixexp :: [context =>] type     	(expression type signature) *)
 (* 	| 	infixexp      *)
-and     exp () = 
+and     exp () =
   HSY.exp
   <$> ~$ infixexp
   <*> ~? (just_tk TK.KS_2_COLON **>

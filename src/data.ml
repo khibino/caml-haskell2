@@ -27,10 +27,15 @@ let cons = (fun a d -> a :: d)
 let cons_nil x = [x]
 
 (* 長さ1以上のリスト 意図的に0以上のリストと型が異なるようにしている *)
-let l1_cons hd (ohd, tl) = (hd, ohd :: tl)
-let l1_cons_nil hd = (hd, [])
-let l1_list (hd, tl) = hd :: tl
+type 'a l1_list = ('a * 'a list)
 
-let l1_rev l1 = match L.rev (l1_list l1) with
+let l1_cons     : 'a -> 'a l1_list -> 'a l1_list =
+  fun hd (ohd, tl) -> (hd, ohd :: tl)
+let l1_cons_nil : 'a -> 'a l1_list =
+  fun hd -> (hd, [])
+let l1_list : 'a l1_list -> 'a list =
+  fun (hd, tl) -> hd :: tl
+
+let l1_rev : 'a l1_list -> 'a l1_list = fun l1 -> match L.rev (l1_list l1) with
   | hd :: tl -> (hd, tl)
   | []       -> failwith "Something wrong? l1_rev failed!"
