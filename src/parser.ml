@@ -74,6 +74,7 @@ sig
 
   val lift_a : ('e0 -> 'e1) -> ('tk, 'e0) parser -> ('tk, 'e1) parser
   val (<$>)  : ('e0 -> 'e1) -> ('tk, 'e0) parser -> ('tk, 'e1) parser
+  val ( *<$> )  : ('e0 -> 'e1) -> ('tk, 'e0) parser -> ('tk, 'e1) parser
 
   val and_parser : ('tk, 'e) parser -> ('tk, 'e) parser
   val (~&)       : ('tk, 'e) parser -> ('tk, 'e) parser
@@ -85,12 +86,15 @@ sig
 
   val ap    : ('tk, 'e0 -> 'e1) parser -> ('tk, 'e0) parser -> ('tk, 'e1) parser
   val (<*>) : ('tk, 'e0 -> 'e1) parser -> ('tk, 'e0) parser -> ('tk, 'e1) parser
+  val ( *<*> ) : ('tk, 'e0 -> 'e1) parser -> ('tk, 'e0) parser -> ('tk, 'e1) parser
 
   val ibind  : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e1) parser
   val ( *> ) : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e1) parser
+  val ( **> ) : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e1) parser
 
   val skip   : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e0) parser
   val ( <* ) : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e0) parser
+  val ( **< ) : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e0) parser
 
   val some   : ('tk, 'e) parser -> ('tk, 'e list) parser
   val many   : ('tk, 'e) parser -> ('tk, 'e list) parser
