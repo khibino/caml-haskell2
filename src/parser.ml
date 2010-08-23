@@ -136,6 +136,7 @@ struct
   let lift_a f lz =
     lz >>= fun a -> return (f a)
   let (<$>) = lift_a
+  let ( *<$>) = lift_a
 
   let and_parser a =
     a >>= fun e -> return e
@@ -155,14 +156,17 @@ struct
     mf >>= fun f ->
       lz >>= fun l -> return (f l)
   let (<*>) = ap
+  let ( *<*>) = ap
 
   let ibind az bz =
     az >>= fun _ -> bz
   let ( *> ) = ibind
+  let ( **> ) = ibind
 
   let skip az bz =
     (az >>= fun a -> bz >> return a)
   let ( <* ) = skip
+  let ( **< ) = skip
 
   let cons = (fun h t -> h :: t)
 

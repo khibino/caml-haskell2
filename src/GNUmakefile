@@ -1,18 +1,18 @@
 
-OCAMLFIND_ULEX_OPT =
-#OCAMLFIND_OPT = -package ulex  -package batteries  -package cf -verbose
-OCAMLFIND_OPT = -package ulex -verbose
+OCAMLFIND_PP_OPT = -syntax camlp4o
+OCAMLFIND_PKG_OPT = -package ulex
+OCAMLFIND_VERBOSE = -verbose
 
 extra_interfaces = lablgtk2 ulex
 extra_archives = lablgtk ulexing
 
 %Ulexer.cmo: %Ulexer.ml
-	ocamlfind ocamlc -c -o $@ $(OCAMLFIND_OPT) $(OCAMLFIND_ULEX_OPT) -syntax camlp4o $<
+	ocamlfind ocamlc -c -o $@ $(OCAMLFIND_PKG_OPT) $(OCAMLFIND_PP_OPT) $(OCAMLFIND_VERBOSE) $<
+
+%Ulexer.ml.dep: %Ulexer.ml
+	ocamlfind ocamldep $(OCAMLFIND_PKG_OPT) $(OCAMLFIND_PP_OPT)  $< > $@
 
 include ocaml_basic.gmk
-
-#%.cmo: %.ml
-#	ocamlfind ocamlc -c -o $@ $(OCAMLFIND_OPT) $<
 
 all: scratch.cma hsParserTestMain_b
 
@@ -37,17 +37,24 @@ sources = \
 	t.ml
 
 objs = $(sources:.ml=.cmo)
+deps = $(sources:.ml=.ml.dep)
+
+include $(deps)
 
 scratch.cma: $(objs)
-	ocamlfind ocamlc -a -o $@ $(OCAMLFIND_OPT) $(OCAMLFIND_ULEX_OPT) $^
-
-#scratchold.cma: batParserCoExt.cmo token.cmo sSyntax.cmo sUlexer.cmo sCparser.cmo sTestOld.cmo
-#	ocamlfind ocamlc -a -o $@ $(OCAMLFIND_OPT) $(OCAMLFIND_ULEX_OPT) $^
+	ocamlfind ocamlc -a -o $@ $(OCAMLFIND_PKG_OPT) $(OCAMLFIND_VERBOSE) $^
 
 hsParserTestMain_b: scratch.cma hsParserTestMain.cmo
 	$(BYTE_LINK.ml) -o $@ $(byte_archives) $^
+
+info:
+	$(ocamldep) $(sources)
 
 clean:
 	$(RM) *.cmo
 	$(RM) *.cmi
 	$(RM) *.annot
+
+realclean: clean
+	$(RM) *.ml.dep
+

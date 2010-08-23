@@ -15,17 +15,19 @@ stdlib_archives = \
 	unix \
 ##	camlp4
 
+ocamlfind = ocamlfind
+
 lib_interfaces = $(stdlib_interfaces) $(extra_interfaces)
 lib_archives = $(stdlib_archives) $(extra_archives)
 
-ocaml_inc_path = $(shell for l in $(lib_interfaces); do ocamlfind query -i-format $$l ; done | sort -u) $(shell ocamlfind query -i-format camlp4)
-ocaml_load_path = $(shell for l in $(lib_interfaces); do ocamlfind query -format "-I %d -ccopt -L%d" $$l ; done | sort -u) $(shell ocamlfind query -format "-I %d -ccopt -L%d" camlp4)
+ocaml_inc_path = $(shell for l in $(lib_interfaces); do $(ocamlfind) query -i-format $$l ; done | sort -u) $(shell $(ocamlfind) query -i-format camlp4)
+ocaml_load_path = $(shell for l in $(lib_interfaces); do $(ocamlfind) query -format "-I %d -ccopt -L%d" $$l ; done | sort -u) $(shell $(ocamlfind) query -format "-I %d -ccopt -L%d" camlp4)
 ocaml_extra_inc_path = 
 ocaml_extra_load_path = 
 
 ocamlyacc = ocamlyacc
 ocamllex = ocamllex
-ocamldep = ocamldep
+ocamldep = ocamldep.opt
 
 ocamlc_debug = -g
 ocamlc_annot = -annot
@@ -64,6 +66,9 @@ NAT_LINK.cmx = $(ocamlopt) $(ocamlopt_opt) $(ocaml_load_path) $(ocaml_extra_load
 
 %.cmx %.o %.cmi: %.ml
 	$(NAT_COMPILE.ml) $< -o $@
+
+%.ml.dep: %.ml
+	$(ocamldep) $< > $@
 
 %.auto.mli: %.ml
 	$(INTERFACE.ml) $(@:.mli=.ml) > $@

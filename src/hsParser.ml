@@ -48,8 +48,8 @@ let opt_semi = ~? semi
 let form_prepend a p = TK.form_prepend <$> a <*> p
 let form_append  p a = TK.form_append  <$> p <*> a
 
-let ( **> ) = form_prepend
-let ( <** ) = form_append
+let ( **|> ) = form_prepend
+let ( **<| ) = form_append
 
 let form_between a b p = TK.form_between <$> a <*> p <*> b
 let between a b = form_between a b |.| (lift_a fst)
@@ -414,7 +414,7 @@ and     guard () =
 and     exp () =
   HSY.exp
   <$> ~$ infixexp
-  <*> ~? (just_tk TK.KS_2_COLON **>
+  <*> ~? (just_tk TK.KS_2_COLON **|>
             (HSY.exp_typ
              <$> ~? (form_append context (just_tk TK.KS_R_W_ARROW))
              <*> ~$ typ))
@@ -423,7 +423,7 @@ and     exp () =
 (* 	| 	- infixexp     	(prefix negation) *)
 (* 	| 	lexp      *)
 and     infixexp () = (HSY.op_app <$> (~$ lexp) <*> qop <*> (~$ infixexp))
-  <|> (just_tk TK.KS_MINUS **> (HSY.neg <$> ~$ infixexp)) <|> (HSY.lexp <$> (~$ lexp))
+  <|> (just_tk TK.KS_MINUS **|> (HSY.neg <$> ~$ infixexp)) <|> (HSY.lexp <$> (~$ lexp))
 
 (* lexp 	→ 	\ apat1 … apatn -> exp     	(lambda abstraction, n ≥ 1) *)
 (* 	| 	let decls in exp     	(let expression) *)
@@ -433,14 +433,14 @@ and     infixexp () = (HSY.op_app <$> (~$ lexp) <*> qop <*> (~$ infixexp))
 (* 	| 	fexp      *)
 and     lexp () =
   (HSY.lambda
-   <$> (just_tk TK.KS_B_SLASH **> l1_some (~$ apat))
+   <$> (just_tk TK.KS_B_SLASH **|> l1_some (~$ apat))
    <*> r_arrow *> ~$ exp)
-  <|> (just_tk TK.K_LET **> (HSY.let_ <$> ~$ decls <*> (just_tk TK.K_IN **> ~$ exp)))
-    <|> (just_tk TK.K_IF **> (HSY.if_ <$> (~$ exp <* opt_semi)
-                              <*> (just_tk TK.K_THEN **> ~$ exp <* opt_semi)
-                              <*> (just_tk TK.K_ELSE **> ~$ exp)))
-      <|> (just_tk TK.K_CASE **> (HSY.case <$> ~$ exp <*> (just_tk TK.K_OF **> ~$ alts)))
-        <|> (just_tk TK.K_DO **> braced (~$ stmts))
+  <|> (just_tk TK.K_LET **|> (HSY.let_ <$> ~$ decls <*> (just_tk TK.K_IN **|> ~$ exp)))
+    <|> (just_tk TK.K_IF **|> (HSY.if_ <$> (~$ exp <* opt_semi)
+                              <*> (just_tk TK.K_THEN **|> ~$ exp <* opt_semi)
+                              <*> (just_tk TK.K_ELSE **|> ~$ exp)))
+      <|> (just_tk TK.K_CASE **|> (HSY.case <$> ~$ exp <*> (just_tk TK.K_OF **|> ~$ alts)))
+        <|> (just_tk TK.K_DO **|> braced (~$ stmts))
           <|> (HSY.fexp <$> ~$ fexp)
 
 (* fexp 	→ 	[fexp] aexp     	(function application) *)
@@ -475,7 +475,7 @@ and     aexp_without_lu () =
           <|> bracketed (HSY.aseq <$> ~$ exp <*> ~? (comma *> ~$ exp) <*> (just_tk TK.KS_DOTDOT *> ~? ~$ exp))
             <|> bracketed (HSY.comp
                            <$> ~$ exp
-                           <*> (just_tk TK.KS_BAR **> l1_separated (~$ qual) comma))
+                           <*> (just_tk TK.KS_BAR **|> l1_separated (~$ qual) comma))
               <|> parened (HSY.left_sec <$> ~$ infixexp <*> qop)
                 <|> parened (HSY.right_sec <$> (~! (just_tk TK.KS_MINUS) *> qop) <*> ~$ infixexp)
 

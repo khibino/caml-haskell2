@@ -4,7 +4,8 @@
 
 PATH="/usr/bin:/bin"
 
-make clean scratch.cma
+#make realclean scratch.cma
+make scratch.cma
 
 rlwrap=rlwrap
 if [ x"$EMACS" != x ]; then
