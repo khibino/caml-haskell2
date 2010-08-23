@@ -37,6 +37,7 @@ let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) 
 
 let comma = just_tk TK.SP_COMMA
 let semi  = just_tk TK.SP_SEMI
+let l_arrow = just_tk TK.KS_L_ARROW
 let r_arrow = just_tk TK.KS_R_ARROW
 
 let opt_semi = ~? semi
@@ -474,7 +475,7 @@ and     aexp_without_lu () =
           <|> bracketed (HSY.aseq <$> ~$ exp <*> ~? (comma *> ~$ exp) <*> (just_tk TK.KS_DOTDOT *> ~? ~$ exp))
             <|> bracketed (HSY.comp
                            <$> ~$ exp
-                           <*> (just_tk TK.KS_BAR **> l1_separated qual comma))
+                           <*> (just_tk TK.KS_BAR **> l1_separated (~$ qual) comma))
               <|> parened (HSY.left_sec <$> ~$ infixexp <*> qop)
                 <|> parened (HSY.right_sec <$> (~! (just_tk TK.KS_MINUS) *> qop) <*> ~$ infixexp)
 
@@ -491,7 +492,10 @@ and    aexp () =
 (* qual 	→ 	pat <- exp     	(generator) *)
 (* 	| 	let decls     	(local declaration) *)
 (* 	| 	exp     	(guard) *)
-and qual = p_fix_later
+and qual () =
+  (HSY.q_gen <$> ~$ pat <*> (l_arrow *> ~$ exp))
+  <|> (HSY.q_let <$> ~$ decls)
+    <|> (HSY.q_exp <$> ~$ exp)
  
 (* alt 	→ 	pat -> exp [where decls]      *)
 (* 	| 	pat gdpat [where decls]      *)

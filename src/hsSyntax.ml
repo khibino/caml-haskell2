@@ -238,22 +238,33 @@ let exp infexp = function
   | Some typ -> comp2_region infexp typ (fun a b -> (a, Some b))
   | None     -> ((fst infexp, None), snd infexp)
 
-type 'infexp qual  = fix_later
+
 type 'infexp fbind = id * 'infexp exp
+
+let fbind qvar exp = comp2_region qvar exp Data.tuple2
+
 type 'infexp alt   = fix_later
 type 'infexp stmt  = fix_later
 type 'infexp decl  = fix_later
+type 'infexp decls = 'infexp decl list
 
 type 'infexp guard =
   | GD_pat of pat * 'infexp
-  | GD_let of 'infexp decl list
+  | GD_let of 'infexp decls
   | GD_exp of 'infexp
 
 let gd_pat pat infexp = comp2_region pat infexp (fun a b -> GD_pat (a, b))
-let gd_let decll1 = TK.with_region (fun a -> GD_let a) decll1
+let gd_let decll  = TK.with_region (fun a -> GD_let a) decll
 let gd_exp exp    = TK.with_region (fun a -> GD_exp a) exp
 
-let fbind qvar exp = comp2_region qvar exp Data.tuple2
+type 'infexp qual  =
+  | Q_gen of pat * 'infexp exp
+  | Q_let of 'infexp decls
+  | Q_exp of 'infexp exp
+
+let q_gen pat exp = comp2_region pat exp (fun a b -> Q_gen (a, b))
+let q_let decls = TK.with_region (fun a -> Q_let a) decls
+let q_exp exp   = TK.with_region (fun a -> Q_exp a) exp
 
 type 'infexp aexp =
   | Var    of id
@@ -278,7 +289,7 @@ type 'infexp fexp =
 
 type 'infexp lexp =
   | Lambda of pat apat list * 'infexp exp
-  | Let    of 'infexp decl list * 'infexp exp
+  | Let    of 'infexp decls * 'infexp exp
   | If     of 'infexp exp * 'infexp exp * 'infexp exp
   | Case   of 'infexp exp * 'infexp alt list
   | Do     of 'infexp stmt list * 'infexp exp
