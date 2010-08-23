@@ -19,13 +19,21 @@ type context = {
   lexbuf : LX.lexbuf;
 }
 
-let make_context chan =
+let make_context lexbuf =
   { pos  = { line = 1;
              curp = 0;
              bol  = 0;
            };
-    lexbuf = LX.from_utf8_channel chan;
+    lexbuf = lexbuf
   }
+
+(*
+let context_from_channel chan =
+  make_context (LX.from_utf8_channel chan)
+
+let context_from_string str =
+  make_context (LX.from_utf8_string str)
+*)
 
 let u8char_list_lexeme lexbuf =
   List.map
@@ -425,11 +433,13 @@ let rec lex_haskell context =
   in
   hs_lexer context.lexbuf
 
-let lazy_list in_chan = 
-  let icxt = make_context in_chan in
+let make_lazy_list lexbuf = 
   let next_token (cxt, prev) =
     if prev = Some (TK.EOF) then None
     else let ((tk, _) as tkwl, cxt) = lex_haskell cxt in
          Some (tkwl, (cxt, Some tk))
   in
-  LazyList.unfold (icxt, None) next_token
+  LazyList.unfold (make_context lexbuf, None) next_token
+
+let lazy_list_of_channel chan = make_lazy_list (LX.from_utf8_channel chan)
+let lazy_list_of_string  str  = make_lazy_list (LX.from_utf8_string str)

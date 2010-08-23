@@ -29,6 +29,9 @@ let cons_nil x = [x]
 (* 長さ1以上のリスト 意図的に0以上のリストと型が異なるようにしている *)
 type 'a l1_list = ('a * 'a list)
 
+let l1_list_cons : 'a -> 'a list -> 'a l1_list =
+  tuple2
+
 let l1_cons     : 'a -> 'a l1_list -> 'a l1_list =
   fun hd (ohd, tl) -> (hd, ohd :: tl)
 let l1_cons_nil : 'a -> 'a l1_list =

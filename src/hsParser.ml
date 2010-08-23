@@ -69,18 +69,18 @@ module Raw = struct
   let some = Simple.Combinator.some
 
   let rec separated a d =
-    (Data.cons *<$> a *<*> (d **> ~$ (fun () -> separated a d)))
+    Data.cons *<$> a *<*> d **> ~$(fun () -> separated a d)
     <|> pure []
 
   (* 長さ1以上のリスト 意図的に0以上のリストと型が異なるようにしている *)
-  let l1_some p = Data.tuple2 *<$> p *<*> many p
+  let l1_some p = Data.l1_list_cons *<$> p *<*> many p
 
   let rec l1_separated a d =
-    (Data.l1_cons *<$> a *<*> (d **> ~$ (fun () -> l1_separated a d)))
-    <|> (Data.l1_cons_nil *<$> a)
+    Data.l1_cons *<$> a *<*> d **> ~$(fun () -> l1_separated a d)
+    <|> Data.l1_cons_nil *<$> a
 
   let l1_separated_2 a d =
-    Data.l1_cons *<$> a *<*> (d **> l1_separated a d)
+    Data.l1_cons *<$> a *<*> d **> l1_separated a d
 end
 
 (* リストとなる構文要素 - 長さ0でも可 - 位置情報付き *)
@@ -98,7 +98,7 @@ let l1_form pl1 =
   (function
     | ((e, reg), []) -> ((e, []), reg)
     | (er, ers)  -> TK.form_between er (fst er, (L.map fst ers)) (L.hd (Data.last' ers)))
-   *<$> pl1
+  *<$> pl1
 
 let l1_some x = l1_form (Raw.l1_some x)
 let l1_separated a d = l1_form (Raw.l1_separated a d)
@@ -148,30 +148,32 @@ let tycls = conid
 let modid = doted_conid
 
 (* qvarid 	→ 	[ modid . ] varid      *)
-let qvarid : (TK.t, HSY.id * TK.region) parser  = qual_id_tk (function
+let qvarid = qual_id_tk (function
   | TK.T_MOD_VARID p  -> Some p
-  | _ -> None) <|> (HPST.q_not_qual *<$> varid)
+  | _ -> None)
+  <|> HPST.q_not_qual *<$> varid
 (* qconid 	→ 	[ modid . ] conid      *)
 let qconid  = HSY.sym_to_qconid *<$> doted_conid
 (* qtycon 	→ 	[ modid . ] tycon      *)
 let qtycon  = qual_id_tk (function
   | TK.T_DOT_CONID s  -> Some (TK.syms_of_qstring (Symbol.name s))
   | _ -> None)
-  <|> (HPST.q_not_qual *<$> tycon)
+  <|> HPST.q_not_qual *<$> tycon
 (* qtycls 	→ 	[ modid . ] tycls      *)
 let qtycls  = qual_id_tk (function
   | TK.T_DOT_CONID s  -> Some (TK.syms_of_qstring (Symbol.name s))
   | _ -> None)
-  <|> (HPST.q_not_qual *<$> tycls)
+  <|> HPST.q_not_qual *<$> tycls
 (* qvarsym 	→ 	[ modid . ] varsym      *)
 let qvarsym = qual_id_tk (function
   | TK.T_MOD_VARSYM p -> Some p
-  | _ -> None) <|> (HPST.q_not_qual *<$> varsym)
+  | _ -> None)
+  <|> HPST.q_not_qual *<$> varsym
 (* qconsym 	→ 	[ modid . ] consym      *)
 let qconsym = qual_id_tk (function
   | TK.T_MOD_CONSYM p -> Some p
   | _ -> None)
-  <|> (HPST.q_not_qual *<$> consym)
+  <|> HPST.q_not_qual *<$> consym
 
 let integer = untag_tk (function | TK.L_INTEGER i -> Some i | _ -> None)
 let float   = untag_tk (function | TK.L_FLOAT f -> Some f | _ -> None)
@@ -191,7 +193,7 @@ let qvar = qvarid <|> parened qvarsym
 (* con 	→ 	conid | ( consym )     	(constructor) *)
 let con = conid <|> parened consym
 
-let gconsym = (HSY.tk_id_colon *<$> just_tk TK.KS_COLON) <|> qconsym
+let gconsym = HSY.tk_id_colon *<$> just_tk TK.KS_COLON <|> qconsym
 (* qcon 	→ 	qconid | ( gconsym )     	(qualified constructor) *)
 let qcon = qconid <|> parened gconsym
 
@@ -215,10 +217,10 @@ let qop = qvarop <|> qconop
 (* 	| 	[]      *)
 (* 	| 	(,{,})      *)
 (* 	| 	qcon      *)
-let rec commas1 () = comma **> ((succ *<$> ~$ commas1) <|> pure 1)
+let rec commas1 () = comma **> (succ *<$> ~$commas1 <|> pure 1)
 let gcon =
   form_parened (pure HSY.id_unit) <|> form_bracketed (pure HSY.id_null_list)
-    <|> form_parened (HSY.id_tuple *<$> (~$ commas1))
+    <|> form_parened (HSY.id_tuple *<$> ~$commas1)
       <|> qcon
 
 
@@ -251,20 +253,20 @@ let     gtycon =
   HSY.gt_qtycon *<$> qtycon
   <|> form_parened (pure HSY.GT_Unit)
     <|> form_bracketed (pure HSY.GT_List)
-      <|> (HSY.gt_arrow *<$> parened r_arrow)
-        <|> (HSY.gt_tuple *<$> form_parened (~$ commas1))
+      <|> HSY.gt_arrow *<$> parened r_arrow
+        <|> HSY.gt_tuple *<$> form_parened ~$commas1
 
 let rec dummy_type_top () = p_fix_later
 
 (* type 	→ 	btype [-> type]     	(function type) *)
 and     typ ()   =
   HSY.typ_of_btype_list
-  *<$> l1_separated (~$ btype) r_arrow
+  *<$> l1_separated ~$btype r_arrow
  
 (* btype 	→ 	[btype] atype     	(type application) *)
 and     btype () =
   HSY.btype_of_atype_list
-  *<$> l1_some (~$ atype)
+  *<$> l1_some ~$atype
  
 (* atype 	→ 	gtycon      *)
 (* 	| 	tyvar      *)
@@ -273,13 +275,13 @@ and     btype () =
 (* 	| 	( type )     	(parenthesized constructor) *)
 
 and     atype () =
-  (HSY.at_gtc *<$> gtycon)
-  <|> (HSY.at_tyvar *<$> tyvar)
+  HSY.at_gtc *<$> gtycon
+  <|> HSY.at_tyvar *<$> tyvar
     <|> parened (HSY.at_tuple
-                 *<$> l1_separated_2 (~$ typ) comma)
-      <|> bracketed (HSY.at_list *<$> ~$ typ)
-        <|> parened (HSY.at_paren *<$> ~$ typ)
- 
+                 *<$> l1_separated_2 ~$typ comma)
+      <|> bracketed (HSY.at_list *<$> ~$typ)
+        <|> parened (HSY.at_paren *<$> ~$typ)
+
 (* class 	→ 	qtycls tyvar      *)
 let clazz = HSY.cls *<$> qtycls *<*> tyvar
 
@@ -337,19 +339,19 @@ let context =  list_form (Data.cons_nil *<$> clazz)
 (* 	| 	- (integer | float)     	(negative literal) *)
 (* 	| 	lpat      *)
 let rec pat () =
-  (HSY.p_infix *<$> ~$ lpat *<*> qconop *<*> ~$ pat)
-    <|> (just_tk TK.KS_MINUS **> ((HSY.p_neg_int *<$> integer)
-                                 <|> (HSY.p_neg_float *<$> float)))
-      <|> (HSY.p_lpat *<$> ~$ lpat)
+  HSY.p_infix *<$> ~$lpat *<*> qconop *<*> ~$pat
+  <|> just_tk TK.KS_MINUS **> (HSY.p_neg_int *<$> integer
+                               <|> HSY.p_neg_float *<$> float)
+    <|> HSY.p_lpat *<$> ~$lpat
  
 (* lpat 	→ 	apat      *)
 (* 	| 	- (integer | float)     	(negative literal) *)
 (* 	| 	gcon apat1 … apatk     	(arity gcon  =  k, k ≥ 1) *)
 and     lpat () =
-  (HSY.lp_apat *<$> ~$ apat)
-  <|> (just_tk TK.KS_MINUS **> ((HSY.lp_neg_int *<$> integer)
-                               <|> (HSY.lp_neg_float *<$> float)))
-    <|> (HSY.lp_gcon *<$> gcon *<*> l1_some (~$ apat))
+  HSY.lp_apat *<$> ~$apat
+  <|> just_tk TK.KS_MINUS **> (HSY.lp_neg_int *<$> integer
+                               <|> HSY.lp_neg_float *<$> float)
+    <|> HSY.lp_gcon *<$> gcon *<*> l1_some ~$apat
 
 (* apat 	→ 	var [ @ apat]     	(as pattern) *)
 (* 	| 	gcon     	(arity gcon  =  0) *)
@@ -360,24 +362,24 @@ and     lpat () =
 (* 	| 	( pat1 , … , patk )     	(tuple pattern, k ≥ 2) *)
 (* 	| 	[ pat1 , … , patk ]     	(list pattern, k ≥ 1) *)
 (* 	| 	~ apat     	(irrefutable pattern) *)
-and     comma_patl_1 () = l1_separated (~$ pat) comma
-and     comma_patl_2 () = l1_separated_2 (~$ pat) comma
+and     comma_patl_1 () = l1_separated ~$pat comma
+and     comma_patl_2 () = l1_separated_2 ~$pat comma
 and     apat () =
-  (HSY.ap_var *<$> var *<*> ~? (just_tk TK.KS_AT **> ~$ apat))
-  <|> (HSY.ap_qcon *<$> qcon *<*> braced (separated (~$ fpat) comma))
+  HSY.ap_var *<$> var *<*> ~?(just_tk TK.KS_AT **> ~$apat)
+  <|> HSY.ap_qcon *<$> qcon *<*> braced (separated ~$fpat comma)
     (* Simpler syntax must be tried later *)
     (* より単純な文法は後にチェックしなければならない *)
     (* * gcon は labeled pattern の qcon にマッチしてしまう *)
-    <|> (HSY.ap_gcon *<$> gcon)
-      <|> (HSY.ap_lit *<$> literal)
-        <|> (HSY.ap_all *<$> just_tk TK.K_WILDCARD)
-          <|> (HSY.ap_paren *<$> parened (~$ pat))
-            <|> (HSY.ap_tuple *<$> parened (~$ comma_patl_2))
-              <|> (HSY.ap_list *<$> parened (~$ comma_patl_1))
-                <|> (HSY.ap_irr *<$> (just_tk TK.KS_TILDE **> ~$ apat))
+    <|> HSY.ap_gcon *<$> gcon
+      <|> HSY.ap_lit *<$> literal
+        <|> HSY.ap_all *<$> just_tk TK.K_WILDCARD
+          <|> HSY.ap_paren *<$> parened ~$pat
+            <|> HSY.ap_tuple *<$> parened ~$comma_patl_2
+              <|> HSY.ap_list *<$> parened ~$comma_patl_1
+                <|> HSY.ap_irr *<$> just_tk TK.KS_TILDE **> ~$apat
  
 (* fpat 	→ 	qvar = pat      *)
-and     fpat () = HSY.fpat *<$> qvar *<*> (just_tk TK.KS_EQ **> ~$ pat)
+and     fpat () = HSY.fpat *<$> qvar *<*> just_tk TK.KS_EQ **> ~$pat
 
 
 (* 10.5  Context-Free Syntax
@@ -399,31 +401,31 @@ let rec dummy_exp_top () = p_fix_later
  
 (* guards 	→ 	| guard1, …, guardn     	(n ≥ 1) *)
 and     guards () =
-  just_tk TK.KS_BAR **> l1_separated (~$ guard) comma
+  just_tk TK.KS_BAR **> l1_separated ~$guard comma
   
 (* guard 	→ 	pat <- infixexp     	(pattern guard) *)
 (* 	| 	let decls     	(local declaration) *)
 (* 	| 	infixexp     	(boolean guard) *)
 and     guard () =
-  HSY.gd_pat *<$> ~$ pat *<*> (r_arrow **> ~$ infixexp)
-  <|> (HSY.gd_let *<$> ~$ decls)
-    <|> (HSY.gd_exp *<$> ~$ infixexp)
+  HSY.gd_pat *<$> ~$pat *<*> l_arrow **> ~$infixexp
+  <|> HSY.gd_let *<$> ~$decls
+    <|> HSY.gd_exp *<$> ~$infixexp
 
 (* exp 	→ 	infixexp :: [context =>] type     	(expression type signature) *)
 (* 	| 	infixexp      *)
 and     exp () =
   HSY.exp
-  *<$> ~$ infixexp
-  *<*> ~? (just_tk TK.KS_2_COLON **|>
-            (HSY.exp_typ
-             *<$> ~? (form_append context (just_tk TK.KS_R_W_ARROW))
-             *<*> ~$ typ))
+  *<$> ~$infixexp
+  *<*> ~?(just_tk TK.KS_2_COLON
+          **|> (HSY.exp_typ
+                *<$> ~?(form_append context (just_tk TK.KS_R_W_ARROW))
+                *<*> ~$typ))
  
 (* infixexp 	→ 	lexp qop infixexp     	(infix operator application) *)
 (* 	| 	- infixexp     	(prefix negation) *)
 (* 	| 	lexp      *)
-and     infixexp () = (HSY.op_app *<$> (~$ lexp) *<*> qop *<*> (~$ infixexp))
-  <|> (just_tk TK.KS_MINUS **|> (HSY.neg *<$> ~$ infixexp)) <|> (HSY.lexp *<$> (~$ lexp))
+and     infixexp () = HSY.op_app *<$> ~$lexp *<*> qop *<*> ~$infixexp
+  <|> HSY.neg *<$> just_tk TK.KS_MINUS **|> ~$infixexp <|> HSY.lexp *<$> ~$lexp
 
 (* lexp 	→ 	\ apat1 … apatn -> exp     	(lambda abstraction, n ≥ 1) *)
 (* 	| 	let decls in exp     	(let expression) *)
@@ -432,19 +434,20 @@ and     infixexp () = (HSY.op_app *<$> (~$ lexp) *<*> qop *<*> (~$ infixexp))
 (* 	| 	do { stmts }     	(do expression) *)
 (* 	| 	fexp      *)
 and     lexp () =
-  (HSY.lambda
-   *<$> (just_tk TK.KS_B_SLASH **|> l1_some (~$ apat))
-   *<*> r_arrow **> ~$ exp)
-  <|> (just_tk TK.K_LET **|> (HSY.let_ *<$> ~$ decls *<*> (just_tk TK.K_IN **|> ~$ exp)))
-    <|> (just_tk TK.K_IF **|> (HSY.if_ *<$> (~$ exp **< opt_semi)
-                              *<*> (just_tk TK.K_THEN **|> ~$ exp **< opt_semi)
-                              *<*> (just_tk TK.K_ELSE **|> ~$ exp)))
-      <|> (just_tk TK.K_CASE **|> (HSY.case *<$> ~$ exp *<*> (just_tk TK.K_OF **|> ~$ alts)))
-        <|> (just_tk TK.K_DO **|> braced (~$ stmts))
-          <|> (HSY.fexp *<$> ~$ fexp)
+  HSY.lambda
+  *<$> just_tk TK.KS_B_SLASH **|> l1_some ~$apat *<*> r_arrow **> ~$exp
+    <|> just_tk TK.K_LET **|> (HSY.let_ *<$> ~$decls *<*> just_tk TK.K_IN **|> ~$exp)
+      <|> just_tk TK.K_IF **|> (HSY.if_ *<$> ~$exp **< opt_semi
+                                *<*> just_tk TK.K_THEN **|> ~$exp **< opt_semi
+                                *<*> just_tk TK.K_ELSE **|> ~$exp)
+        <|> just_tk TK.K_CASE **|> (HSY.case *<$>
+                                      ~$exp *<*>
+                                      just_tk TK.K_OF **|> ~$alts)
+          <|> just_tk TK.K_DO **|> braced ~$stmts
+            <|> HSY.fexp *<$> ~$fexp
 
 (* fexp 	→ 	[fexp] aexp     	(function application) *)
-and     fexp () = HSY.fexp_of_aexp_list *<$> l1_some (~$ aexp)
+and     fexp () = HSY.fexp_of_aexp_list *<$> l1_some ~$aexp
  
 (* aexp 	→ 	qvar     	(variable) *)
 (* 	| 	gcon     	(general constructor) *)
@@ -458,44 +461,43 @@ and     fexp () = HSY.fexp_of_aexp_list *<$> l1_some (~$ aexp)
 (* 	| 	( qop⟨-⟩ infixexp )     	(right section) *)
 (* 	| 	qcon { fbind1 , … , fbindn }     	(labeled construction, n ≥ 0) *)
 (* 	| 	aexp⟨qcon⟩ { fbind1 , … , fbindn }     	(labeled update, n  ≥  1) *)
-and     comma_expl_1 () = l1_separated (~$ exp) comma
-and     comma_expl_2 () = l1_separated_2 (~$ exp) comma
+and     comma_expl_1 () = l1_separated ~$exp comma
+and     comma_expl_2 () = l1_separated_2 ~$exp comma
 and     aexp_without_lu () = 
-  (HSY.lbl_cons *<$> qcon *<*> braced (separated (~$ fbind) comma))
-  (* <|> (HSY.lbl_upd *<$> (~! qcon **> ~$ aexp) *<*> braced (l1_separated (~$ fbind) comma)) *)
+  HSY.lbl_cons *<$> qcon *<*> braced (separated ~$fbind comma)
+  (* <|> (HSY.lbl_upd *<$> (~! qcon **> ~$aexp) *<*> braced (l1_separated (~$fbind) comma)) *)
   (* Simpler syntax must be tried later *)
   (* より単純な文法は後にチェックしなければならない *)
   (* * gcon は labeled construction の qcon にマッチしてしまう *)
   (* * var は labeled construction の qcon にマッチしてしまう
        が そもそも左再帰なので除去するために labeled update だけ分けた   *)
-  <|> (HSY.var *<$> qvar) <|> (HSY.con *<$> gcon) <|> (HSY.lit *<$> literal)
-    <|> (HSY.paren *<$> parened (~$ exp))
-      <|> (HSY.tuple *<$> parened (~$ comma_expl_2))
-        <|> (HSY.list *<$> bracketed (~$ comma_expl_1))
-          <|> bracketed (HSY.aseq *<$> ~$ exp *<*> ~? (comma **> ~$ exp) *<*> (just_tk TK.KS_DOTDOT **> ~? ~$ exp))
+  <|> HSY.var *<$> qvar <|> HSY.con *<$> gcon <|> HSY.lit *<$> literal
+    <|> HSY.paren *<$> parened ~$exp
+      <|> HSY.tuple *<$> parened ~$comma_expl_2
+        <|> HSY.list *<$> bracketed ~$comma_expl_1
+          <|> bracketed (HSY.aseq *<$> ~$exp *<*> ~?(comma **> ~$exp) *<*> just_tk TK.KS_DOTDOT **> ~? ~$exp)
             <|> bracketed (HSY.comp
-                           *<$> ~$ exp
-                           *<*> (just_tk TK.KS_BAR **|> l1_separated (~$ qual) comma))
-              <|> parened (HSY.left_sec *<$> ~$ infixexp *<*> qop)
-                <|> parened (HSY.right_sec *<$> (~! (just_tk TK.KS_MINUS) **> qop) *<*> ~$ infixexp)
+                           *<$> ~$exp
+                           *<*> just_tk TK.KS_BAR **|> l1_separated ~$qual comma)
+              <|> parened (HSY.left_sec *<$> ~$infixexp *<*> qop)
+                <|> parened (HSY.right_sec *<$> ~!(just_tk TK.KS_MINUS) **> qop *<*> ~$infixexp)
 
 
-
-and    braced_fbind_list_1 () = braced (l1_separated (~$ fbind) comma)
+and    braced_fbind_list_1 () = braced (l1_separated (~$fbind) comma)
 
 and    aexp () =
-  (HSY.lbl_upd_of_fbinds_list
-   *<$> (~! qcon **> ~$ aexp_without_lu)
-   *<*> some (~$ braced_fbind_list_1))
-  <|> ~$ aexp_without_lu
+  HSY.lbl_upd_of_fbinds_list
+  *<$> ~!qcon **> ~$aexp_without_lu
+  *<*> some ~$braced_fbind_list_1
+  <|> ~$aexp_without_lu
 
 (* qual 	→ 	pat <- exp     	(generator) *)
 (* 	| 	let decls     	(local declaration) *)
 (* 	| 	exp     	(guard) *)
 and qual () =
-  (HSY.q_gen *<$> ~$ pat *<*> (l_arrow **> ~$ exp))
-  <|> (HSY.q_let *<$> ~$ decls)
-    <|> (HSY.q_exp *<$> ~$ exp)
+  HSY.q_gen *<$> ~$pat *<*> l_arrow **> ~$exp
+  <|> HSY.q_let *<$> ~$decls
+    <|> HSY.q_exp *<$> ~$exp
  
 (* alt 	→ 	pat -> exp [where decls]      *)
 (* 	| 	pat gdpat [where decls]      *)
@@ -508,7 +510,7 @@ and     alts () = l1_separated alt semi
 (* gdpat 	→ 	guards -> exp [ gdpat ]      *)
  
 (* stmts 	→ 	stmt1 … stmtn exp [;]     	(n ≥ 0) *)
-and     stmts () = HSY.do_ *<$> list_form (many stmt) *<*> ~$ exp **< opt_semi
+and     stmts () = HSY.do_ *<$> list_form (many stmt) *<*> ~$exp **< opt_semi
 (* stmt 	→ 	exp ;      *)
 (* 	| 	pat <- exp ;      *)
 (* 	| 	let decls ;      *)
@@ -516,7 +518,7 @@ and     stmts () = HSY.do_ *<$> list_form (many stmt) *<*> ~$ exp **< opt_semi
 and     stmt = p_fix_later
  
 (* fbind 	→ 	qvar = exp      *)
-and     fbind () = HSY.fbind *<$> qvar *<*> (just_tk TK.KS_EQ **> ~$ exp)
+and     fbind () = HSY.fbind *<$> qvar *<*> just_tk TK.KS_EQ **> ~$exp
  
 
 (* 10.5  Context-Free Syntax *)
@@ -589,13 +591,13 @@ let test_s0 = drop_any *>
 
 (*  *)
 let test_s1 : (TK.t, HSY.infexp HSY.exp * TK.region) parser =
-  (fst *<$> drop_any) **> ~$ exp
+  (fst *<$> drop_any) **> ~$exp
 
 (*let test_s1 : (TK.t, HSY.infexp HSY.lexp * TK.region) parser =
-  (fst *<$> drop_any) **> ~$ lexp*)
+  (fst *<$> drop_any) **> ~$lexp*)
 
 let test_s2 : (TK.t, HSY.typ * TK.region) parser =
-  (fst *<$> drop_any) **> ~$ typ
+  (fst *<$> drop_any) **> ~$typ
 
 let test_s3 : (TK.t, HSY.pat HSY.apat * TK.region) parser =
-  (fst *<$> drop_any) **> ~$ apat
+  (fst *<$> drop_any) **> ~$apat
