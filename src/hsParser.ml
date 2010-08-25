@@ -499,15 +499,15 @@ and qual () =
   <|> HSY.q_let *<$> ~$decls
     <|> HSY.q_exp *<$> ~$exp
  
+(* alts 	→ 	alt1 ; … ; altn     	(n ≥ 1) *)
+and     alts () = l1_separated alt semi
 (* alt 	→ 	pat -> exp [where decls]      *)
 (* 	| 	pat gdpat [where decls]      *)
 (* 	| 	    	(empty alternative) *)
 and alt = p_fix_later
- 
-(* alts 	→ 	alt1 ; … ; altn     	(n ≥ 1) *)
-and     alts () = l1_separated alt semi
 
 (* gdpat 	→ 	guards -> exp [ gdpat ]      *)
+and gdpat () = l1_some (HSY.gp_gdpat <$> ~$guards <*> r_arrow **> ~$exp)
  
 (* stmts 	→ 	stmt1 … stmtn exp [;]     	(n ≥ 0) *)
 and     stmts () = HSY.do_ *<$> list_form (many stmt) *<*> ~$exp **< opt_semi
@@ -524,12 +524,17 @@ and     fbind () = HSY.fbind *<$> qvar *<*> just_tk TK.KS_EQ **> ~$exp
 (* 10.5  Context-Free Syntax *)
 (* Decls *)
 
+(* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
+and     decls () = braced (separated decl semi)
+
 (* decl 	→ 	gendecl      *)
 (* 	| 	(funlhs | pat) rhs      *)
 and     decl = p_fix_later
  
-(* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
-and     decls () = braced (separated decl semi)
+
+(* gendecl 	→ 	vars :: [context =>] type     	(type signature) *)
+(* 	| 	fixity [integer] ops     	(fixity declaration) *)
+(* 	| 	    	(empty declaration) *)
 
 (* cdecls 	→ 	{ cdecl1 ; … ; cdecln }     	(n ≥ 0) *)
 (* cdecl 	→ 	gendecl      *)
@@ -539,10 +544,6 @@ and     decls () = braced (separated decl semi)
 (* idecl 	→ 	(funlhs | var) rhs      *)
 (* 	| 	    	(empty) *)
  
-(* gendecl 	→ 	vars :: [context =>] type     	(type signature) *)
-(* 	| 	fixity [integer] ops     	(fixity declaration) *)
-(* 	| 	    	(empty declaration) *)
-
 
 (* 10.5  Context-Free Syntax *)
 (* Top level *)

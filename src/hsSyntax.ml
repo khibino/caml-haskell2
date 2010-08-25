@@ -257,6 +257,8 @@ let gd_pat pat infexp = comp2_region pat infexp (fun a b -> GD_pat (a, b))
 let gd_let decll  = TK.with_region (fun a -> GD_let a) decll
 let gd_exp exp    = TK.with_region (fun a -> GD_exp a) exp
 
+type 'infexp guards = 'infexp guard list
+
 type 'infexp qual  =
   | Q_gen of pat * 'infexp exp
   | Q_let of 'infexp decls
@@ -265,6 +267,10 @@ type 'infexp qual  =
 let q_gen pat exp = comp2_region pat exp (fun a b -> Q_gen (a, b))
 let q_let decls = TK.with_region (fun a -> Q_let a) decls
 let q_exp exp   = TK.with_region (fun a -> Q_exp a) exp
+
+type 'infexp gdpat = ('infexp guards * 'infexp exp) list
+
+let gp_gdpat g e = comp2_region g e Data.tuple2
 
 type 'infexp aexp =
   | Var    of id
