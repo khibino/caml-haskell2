@@ -20,3 +20,7 @@ let current_modid () =
 
 let q_not_qual = TK.with_region (fun s -> HSY.unqual_id (current_modid (), s))
 
+let sym_to_qconid = TK.with_region (fun qs ->
+  let str = SYM.name qs in
+  if String.contains str '.' then HSY.qual_id (TK.syms_of_qstring str)
+  else HSY.unqual_id (current_modid (), qs))

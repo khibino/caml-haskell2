@@ -72,8 +72,6 @@ let unqual_id (m, n) = {
   qual  = Unq m;
 }
 
-let sym_to_qconid = TK.with_region (fun qs -> qual_id (TK.syms_of_qstring (SYM.name qs)))
-
 let sym_prelude = SYM.intern "Prelude"
 
 let sym_nul    = SYM.intern ""
@@ -243,7 +241,7 @@ type 'infexp fbind = id * 'infexp exp
 
 let fbind qvar exp = comp2_region qvar exp Data.tuple2
 
-type 'infexp alt   = fix_later
+(* type 'infexp alt   = fix_later *)
 type 'infexp stmt  = fix_later
 type 'infexp decl  = fix_later
 type 'infexp decls = 'infexp decl list
@@ -271,6 +269,15 @@ let q_exp exp   = TK.with_region (fun a -> Q_exp a) exp
 type 'infexp gdpat = ('infexp guards * 'infexp exp) list
 
 let gp_gdpat g e = comp2_region g e Data.tuple2
+
+type 'infexp alt =
+  | AL_pat   of pat * 'infexp exp * 'infexp decls option
+  | AL_gdpat of pat * 'infexp gdpat * 'infexp decls option
+  | AL_empty
+
+let al_pat pat exp = function
+  | Some decls -> TK.form_between pat (AL_pat (fst pat, fst exp, Some (fst decls))) decls
+  | None       -> comp2_region pat exp (fun a b -> AL_pat (a, b, None))
 
 type 'infexp aexp =
   | Var    of id

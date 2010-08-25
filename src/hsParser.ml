@@ -35,6 +35,7 @@ let p_fix_later : (TK.t, unit * TK.region) parser = pure ((), region_fix_later)
 let conid = untag_tk (function | TK.T_CONID s -> Some s | _ -> None)
 let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) <|> conid
 
+let where = just_tk TK.K_WHERE
 let comma = just_tk TK.SP_COMMA
 let semi  = just_tk TK.SP_SEMI
 let l_arrow = just_tk TK.KS_L_ARROW
@@ -153,7 +154,7 @@ let qvarid = qual_id_tk (function
   | _ -> None)
   <|> HPST.q_not_qual *<$> varid
 (* qconid 	→ 	[ modid . ] conid      *)
-let qconid  = HSY.sym_to_qconid *<$> doted_conid
+let qconid  = HPST.sym_to_qconid *<$> doted_conid
 (* qtycon 	→ 	[ modid . ] tycon      *)
 let qtycon  = qual_id_tk (function
   | TK.T_DOT_CONID s  -> Some (TK.syms_of_qstring (Symbol.name s))
@@ -442,7 +443,7 @@ and     lexp () =
                                 *<*> just_tk TK.K_ELSE **|> ~$exp)
         <|> just_tk TK.K_CASE **|> (HSY.case *<$>
                                       ~$exp *<*>
-                                      just_tk TK.K_OF **|> ~$alts)
+                                      just_tk TK.K_OF **|> braced ~$alts)
           <|> just_tk TK.K_DO **|> braced ~$stmts
             <|> HSY.fexp *<$> ~$fexp
 
@@ -494,20 +495,21 @@ and    aexp () =
 (* qual 	→ 	pat <- exp     	(generator) *)
 (* 	| 	let decls     	(local declaration) *)
 (* 	| 	exp     	(guard) *)
-and qual () =
+and     qual () =
   HSY.q_gen *<$> ~$pat *<*> l_arrow **> ~$exp
   <|> HSY.q_let *<$> ~$decls
     <|> HSY.q_exp *<$> ~$exp
  
 (* alts 	→ 	alt1 ; … ; altn     	(n ≥ 1) *)
-and     alts () = l1_separated alt semi
+and     alts () = l1_separated ~$alt semi
 (* alt 	→ 	pat -> exp [where decls]      *)
 (* 	| 	pat gdpat [where decls]      *)
 (* 	| 	    	(empty alternative) *)
-and alt = p_fix_later
+and     alt () = (* p_fix_later *)
+  HSY.al_pat <$> ~$pat <*> r_arrow **> ~$exp <*> ~?(where **> ~$decls)
 
 (* gdpat 	→ 	guards -> exp [ gdpat ]      *)
-and gdpat () = l1_some (HSY.gp_gdpat <$> ~$guards <*> r_arrow **> ~$exp)
+and     gdpat () = l1_some (HSY.gp_gdpat <$> ~$guards <*> r_arrow **> ~$exp)
  
 (* stmts 	→ 	stmt1 … stmtn exp [;]     	(n ≥ 0) *)
 and     stmts () = HSY.do_ *<$> list_form (many stmt) *<*> ~$exp **< opt_semi
@@ -587,18 +589,18 @@ and     decl = p_fix_later
 
 let drop_any    = pred_tk (fun _ -> true)
 
-let test_s0 = drop_any *>
+let test_id = drop_any *>
   some (qvar <|> gconsym <|> qconop <|> qvarop)
 
 (*  *)
-let test_s1 : (TK.t, HSY.infexp HSY.exp * TK.region) parser =
+let test_exp : (TK.t, HSY.infexp HSY.exp * TK.region) parser =
   (fst *<$> drop_any) **> ~$exp
 
-(*let test_s1 : (TK.t, HSY.infexp HSY.lexp * TK.region) parser =
-  (fst *<$> drop_any) **> ~$lexp*)
+let test_lexp : (TK.t, HSY.infexp HSY.lexp * TK.region) parser =
+  (fst *<$> drop_any) **> ~$lexp
 
-let test_s2 : (TK.t, HSY.typ * TK.region) parser =
+let test_typ : (TK.t, HSY.typ * TK.region) parser =
   (fst *<$> drop_any) **> ~$typ
 
-let test_s3 : (TK.t, HSY.pat HSY.apat * TK.region) parser =
+let test_apat : (TK.t, HSY.pat HSY.apat * TK.region) parser =
   (fst *<$> drop_any) **> ~$apat
