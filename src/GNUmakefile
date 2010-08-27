@@ -51,7 +51,7 @@ info:
 	$(ocamldep) $(sources)
 
 clean:
-	$(RM) *.cmo
+	$(RM) *.cmo *.cma
 	$(RM) *.cmi
 	$(RM) *.annot
 
