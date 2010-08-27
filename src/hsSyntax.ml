@@ -93,19 +93,48 @@ let id_unit  = special_id Unit
 let id_null_list = special_id NullList
 let id_tuple i   = special_id (Tuple i)
 
+type conid = SYM.t
+type varsym = SYM.t
+type comsym = SYM.t
+type varid = SYM.t
+type tyvar = SYM.t
+type tycon = SYM.t
+type tycls = SYM.t
+type modid = SYM.t
+type qvarid = id
+type qconid = id
+type qtycon = id
+type qtycls = id
+type qvarsym = id
+type qconsym = id
+
+type var = SYM.t
+type qvar = id
+
+type con = SYM.t
+type gconsym = id
+type qcon = id
+
+type varop = SYM.t
+type qvarop = id
+
+type conop = SYM.t
+type qconop = id
+
+type op = SYM.t
+type qop = id
+
 type gcon = id
 
 let tk_id_colon = TK.with_region (function
   | TK.KS_COLON -> id_colon
   | _           -> failwith "Not KS_COLON token!")
 
-
 type lit =
   | Char of int
   | Str  of int array
   | Int  of int64
   | Flo  of float
-
 
 type fixity =
   | I_left
@@ -124,14 +153,14 @@ let tuple2_region a b =
 type fix_later = unit
 
 type gtycon =
-  | GT_QTycon of id
+  | GT_QTycon of qtycon
   | GT_Unit
   | GT_List
   | GT_Arrow
   | GT_Tuple of int
 
-type typ =
-  | T_fun of (btype * typ)
+type type_ =
+  | T_fun of (btype * type_)
   | T_btype of btype
 
 and  btype =
@@ -140,23 +169,23 @@ and  btype =
 
 and  atype =
   | AT_gtc of gtycon
-  | AT_tyvar of SYM.t
-  | AT_tuple of typ list
-  | AT_list  of typ
-  | AT_paren of typ
+  | AT_tyvar of tyvar
+  | AT_tuple of type_ list
+  | AT_list  of type_
+  | AT_paren of type_
 
-let typ_of_btype_list
-    : (btype * btype list) * TK.region -> typ * TK.region =
+let type_of_btype_list
+    : (btype * btype list) * TK.region -> type_ * TK.region =
   TK.with_region (fun
     tl1 -> let (hd, tl) = Data.l1_rev tl1 in
-           L.fold_left (fun typ btype -> T_fun (btype, typ)) (T_btype hd) tl)
+           L.fold_left (fun type_ btype -> T_fun (btype, type_)) (T_btype hd) tl)
 
 let btype_of_atype_list
     : (atype * atype list) * TK.region -> btype * TK.region =
   TK.with_region (fun
     (hd, tl) -> L.fold_left (fun b a -> BT_app (b, a)) (BT_atype hd) tl)
 
-let gt_qtycon = TK.with_region (fun id -> GT_QTycon id)
+let gt_qtycon = TK.with_region (fun qtycon -> GT_QTycon qtycon)
 let gt_tuple  = TK.with_region (fun i -> GT_Tuple i)
 (* GT_Unit *)
 (* GT_List *)
@@ -166,20 +195,20 @@ let gt_arrow : (TK.typ * TK.region) -> (gtycon * TK.region)
 let at_gtc   = TK.with_region (fun gtc -> AT_gtc gtc)
 let at_tyvar = TK.with_region (fun tyvar -> AT_tyvar tyvar)
 let at_tuple = TK.with_region (fun types -> AT_tuple (Data.l1_list types))
-let at_list  = TK.with_region (fun typ -> AT_list  typ)
-let at_paren = TK.with_region (fun typ -> AT_paren typ)
+let at_list  = TK.with_region (fun type_ -> AT_list  type_)
+let at_paren = TK.with_region (fun type_ -> AT_paren type_)
 
-type cls = id * SYM.t
-let cls = tuple2_region
+type class_ = qtycls * tyvar
+let class_ = tuple2_region
 
-type context = cls list
+type context = class_ list
 
-type 'pat fpat = (id * 'pat)
+type 'pat fpat = (qvar * 'pat)
 
 type 'pat apat =
-  | AP_var  of (SYM.t * 'pat apat option)
+  | AP_var  of (var * 'pat apat option)
   | AP_gcon of gcon
-  | AP_qcon of id * 'pat fpat list
+  | AP_qcon of qcon * 'pat fpat list
   | AP_lit  of lit
   | AP_all
   | AP_paren of 'pat
@@ -194,7 +223,7 @@ type 'pat lpat =
   | LP_gcon of (gcon * 'pat apat list)
 
 type pat  =
-  | P_infix of pat lpat * id * pat
+  | P_infix of pat lpat * qconop * pat
   | P_neg_int of hs_integer
   | P_neg_float of hs_float
   | P_lpat of pat lpat
@@ -205,8 +234,8 @@ let ap_var var = function
   | Some as_p -> comp2_region var as_p (fun a b -> AP_var (a, Some b))
   | None      -> (AP_var (fst var, None), snd var)
 
-let ap_gcon = TK.with_region (fun id -> AP_gcon id)
-let ap_qcon id flist = comp2_region id flist (fun a b -> AP_qcon (a, b))
+let ap_gcon = TK.with_region (fun gcon -> AP_gcon gcon)
+let ap_qcon qcon flist = comp2_region qcon flist (fun a b -> AP_qcon (a, b))
 let ap_lit  = TK.with_region (fun lit -> AP_lit lit)
 let ap_all : (TK.typ * TK.region) -> (pat apat * TK.region)
   = TK.with_region_just AP_all
@@ -226,18 +255,23 @@ let p_neg_int = TK.with_region (fun i -> P_neg_int (Int64.neg i))
 let p_neg_float = TK.with_region (fun f -> P_neg_float (~-. f))
 let p_lpat = TK.with_region (fun lp -> P_lpat lp)
 
-type 'infexp exp = 'infexp * (context option * typ) option
+type funlhs =
+  | FL_var  of var * pat apat list
+  | FL_op   of pat * pat
+  | FL_nest of funlhs * pat apat list
 
-let exp_typ context typ = match context with
-  | Some c -> comp2_region c typ (fun a b -> ((Some a), b))
-  | None   -> ((None, fst typ), snd typ)
+type 'infexp exp = 'infexp * (context option * type_) option
+
+let exp_typ context type_ = match context with
+  | Some c -> comp2_region c type_ (fun a b -> ((Some a), b))
+  | None   -> ((None, fst type_), snd type_)
 
 let exp infexp = function
-  | Some typ -> comp2_region infexp typ (fun a b -> (a, Some b))
-  | None     -> ((fst infexp, None), snd infexp)
+  | Some type_ -> comp2_region infexp type_ (fun a b -> (a, Some b))
+  | None       -> ((fst infexp, None), snd infexp)
 
 
-type 'infexp fbind = id * 'infexp exp
+type 'infexp fbind = qvar * 'infexp exp
 
 let fbind qvar exp = comp2_region qvar exp Data.tuple2
 
@@ -287,17 +321,17 @@ let al_gdpat pat gdp =
     | None       -> comp2_region pat gdp (fun a b -> AL_gdpat (a, Data.l1_list b, None))
 
 type 'infexp aexp =
-  | Var    of id
-  | Con    of id
+  | Var    of qvar
+  | Con    of gcon
   | Lit    of lit
   | Paren  of 'infexp exp
   | Tuple  of 'infexp exp list
   | List   of 'infexp exp list
   | ASeq   of 'infexp exp * 'infexp exp option * 'infexp exp option (* arithmetic sequence *)
   | Comp   of 'infexp exp * 'infexp qual list (* list comprehension *)
-  | LeftS  of 'infexp * id (* left section*)
-  | RightS of id * 'infexp (* right section*)
-  | ConsL  of id * 'infexp fbind list (* labeled construction *)
+  | LeftS  of 'infexp * qop (* left section*)
+  | RightS of qop * 'infexp (* right section*)
+  | ConsL  of qcon * 'infexp fbind list (* labeled construction *)
   | UpdL   of 'infexp aexp * 'infexp fbind list (* labeled update *)
 
 (* 以下の実装のように引数を一つづつ部分適用するのは効率が良くないはず。
@@ -316,18 +350,18 @@ type 'infexp lexp =
   | FExp   of 'infexp fexp
 
 type infexp =
-  | OpApp of infexp lexp * id * infexp
+  | OpApp of infexp lexp * qop * infexp
   | Neg   of infexp
   | LExp  of infexp lexp
 
 (* infexp construction *)
-let op_app lexp id infexp = TK.form_between lexp (OpApp (fst lexp, fst id, fst infexp)) infexp
+let op_app lexp qop infexp = TK.form_between lexp (OpApp (fst lexp, fst qop, fst infexp)) infexp
 let neg = TK.with_region (fun infexp -> Neg infexp)
 let lexp = TK.with_region (fun lexp -> LExp lexp)
 
 (* aexp construction *)
-let var = TK.with_region (fun id -> Var id)
-let con = TK.with_region (fun id -> Con id)
+let var = TK.with_region (fun qvar -> Var qvar)
+let con = TK.with_region (fun gcon -> Con gcon)
 let lit = TK.with_region (fun lit -> Lit lit)
 let paren = TK.with_region (fun exp -> (Paren exp : infexp aexp))
 let tuple = TK.with_region (fun el  -> (Tuple (Data.l1_list el) : infexp aexp))
@@ -343,9 +377,9 @@ let aseq _1st _2nd last =
     _1st
 
 let comp exp ql = comp2_region exp ql (fun a b -> Comp (a, Data.l1_list b))
-let left_sec  infexp id = comp2_region infexp id (fun a b -> LeftS (a, b))
-let right_sec id infexp = comp2_region id infexp (fun a b -> RightS (a, b))
-let lbl_cons id bl = comp2_region id bl (fun a b -> ConsL (a, b))
+let left_sec  infexp qop = comp2_region infexp qop (fun a b -> LeftS (a, b))
+let right_sec qop infexp = comp2_region qop infexp (fun a b -> RightS (a, b))
+let lbl_cons qcon bl = comp2_region qcon bl (fun a b -> ConsL (a, b))
 let lbl_upd  aexp bl = comp2_region aexp bl (fun a b -> UpdL  (a, Data.l1_list b))
 
 let lbl_upd_of_fbinds_list aexp bl =

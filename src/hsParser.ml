@@ -119,7 +119,7 @@ let literal = untag_tk (function
   | TK.L_FLOAT f   -> Some (HSY.Flo f)
   | _              -> None)
 
-(* varsym 	 → 	( symbol⟨:⟩ {symbol} ){reservedop | dashes}      *)
+(* varsym 	 → 	( symbol⟨:⟩ {symbol} )⟨reservedop | dashes⟩      *)
 let varsym = untag_tk (function
   | TK.T_VARSYM s -> Some s
   | TK.KS_PLUS    -> Some HSY.sym_plus
@@ -260,13 +260,14 @@ let     gtycon =
 
 (* type 	→ 	btype [-> type]     	(function type) *)
 let rec typ ()   =
-  HSY.typ_of_btype_list
-  *<$> l1_separated ~$btype r_arrow
+  HSY.type_of_btype_list
+  *<$> l1_separated ~$btype r_arrow  (* 単純なbtypeのリスト構造になるのでタグを省く *)
  
 (* btype 	→ 	[btype] atype     	(type application) *)
 and     btype () =
   HSY.btype_of_atype_list
-  *<$> l1_some ~$atype
+  *<$> l1_some ~$atype  (* btypeの左再帰を除去してatypeのリストに *)
+
  
 (* atype 	→ 	gtycon      *)
 (* 	| 	tyvar      *)
@@ -283,12 +284,12 @@ and     atype () =
         <|> parened (HSY.at_paren *<$> ~$typ)
 
 (* class 	→ 	qtycls tyvar      *)
-let clazz = HSY.cls *<$> qtycls *<*> tyvar
+let class_ = HSY.class_ *<$> qtycls *<*> tyvar
 
 (* context 	→ 	class      *)
 (* 	| 	( class1 , … , classn )     	(n ≥ 0) *)
-let context =  list_form (Data.cons_nil *<$> clazz)
-  <|> parened (separated clazz comma (* class list *) )
+let context =  list_form (Data.cons_nil *<$> class_)
+  <|> parened (separated class_ comma (* class list *) )
 
 (* 	| 	qtycls ( tyvar atype1 … atypen )     	(n ≥ 1) *)
 (* scontext 	→ 	simpleclass      *)
@@ -382,20 +383,23 @@ and     apat () =
 and     fpat () = HSY.fpat *<$> qvar *<*> just_tk TK.KS_EQ **> ~$pat
 
 
+(* funlhs 	→ 	var apat { apat }      *)
+(* 	| 	pat varop pat      *)
+(* 	| 	( funlhs ) apat { apat }      *)
+
+
+
 (* 10.5  Context-Free Syntax
    -- top から参照される要素を先に定義 -- 
    --- exp
    -- define elements which referred by top elements. -- 
    --- exp
 *)
+
 let rec dummy_exp_top () = p_fix_later
 
 and opt_where () = ~?(where **> ~$decls)
 
-(* funlhs 	→ 	var apat { apat }      *)
-(* 	| 	pat varop pat      *)
-(* 	| 	( funlhs ) apat { apat }      *)
- 
 (* rhs 	→ 	= exp [where decls]      *)
 (* 	| 	gdrhs [where decls]      *)
  
@@ -535,7 +539,7 @@ and     decls () = braced (separated decl semi)
 (* decl 	→ 	gendecl      *)
 (* 	| 	(funlhs | pat) rhs      *)
 and     decl = p_fix_later
- 
+
 
 (* gendecl 	→ 	vars :: [context =>] type     	(type signature) *)
 (* 	| 	fixity [integer] ops     	(fixity declaration) *)
@@ -602,7 +606,7 @@ let test_exp : (TK.t, HSY.infexp HSY.exp * TK.region) parser =
 let test_lexp : (TK.t, HSY.infexp HSY.lexp * TK.region) parser =
   (fst *<$> drop_any) **> ~$lexp
 
-let test_typ : (TK.t, HSY.typ * TK.region) parser =
+let test_typ : (TK.t, HSY.type_ * TK.region) parser =
   (fst *<$> drop_any) **> ~$typ
 
 let test_apat : (TK.t, HSY.pat HSY.apat * TK.region) parser =
