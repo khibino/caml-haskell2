@@ -26,6 +26,7 @@ let qual_id_tk f =
 
 let pos_dummy = TK.pos (-1) (-1)
 let region_dummy = TK.region pos_dummy pos_dummy
+let pure_with_dummy_region v = pure (v, region_dummy)
 
 let pos_fix_later = pos_dummy
 let region_fix_later = TK.region pos_fix_later pos_fix_later
@@ -391,6 +392,8 @@ and     fpat () = HSY.fpat *<$> qvar *<*> just_tk TK.KS_EQ **> ~$pat
 *)
 let rec dummy_exp_top () = p_fix_later
 
+and opt_where () = ~?(where **> ~$decls)
+
 (* funlhs 	→ 	var apat { apat }      *)
 (* 	| 	pat varop pat      *)
 (* 	| 	( funlhs ) apat { apat }      *)
@@ -506,10 +509,12 @@ and     alts () = l1_separated ~$alt semi
 (* 	| 	pat gdpat [where decls]      *)
 (* 	| 	    	(empty alternative) *)
 and     alt () = (* p_fix_later *)
-  HSY.al_pat <$> ~$pat <*> r_arrow **> ~$exp <*> ~?(where **> ~$decls)
+  HSY.al_pat *<$> ~$pat *<*> r_arrow **> ~$exp *<*> ~$opt_where
+  <|> HSY.al_gdpat *<$> ~$pat *<*> ~$gdpat *<*> ~$opt_where
+    <|> pure_with_dummy_region HSY.AL_empty
 
 (* gdpat 	→ 	guards -> exp [ gdpat ]      *)
-and     gdpat () = l1_some (HSY.gp_gdpat <$> ~$guards <*> r_arrow **> ~$exp)
+and     gdpat () = l1_some (HSY.gp_gdpat *<$> ~$guards *<*> r_arrow **> ~$exp)
  
 (* stmts 	→ 	stmt1 … stmtn exp [;]     	(n ≥ 0) *)
 and     stmts () = HSY.do_ *<$> list_form (many stmt) *<*> ~$exp **< opt_semi

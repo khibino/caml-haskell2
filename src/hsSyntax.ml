@@ -268,7 +268,9 @@ let q_exp exp   = TK.with_region (fun a -> Q_exp a) exp
 
 type 'infexp gdpat = ('infexp guards * 'infexp exp) list
 
-let gp_gdpat g e = comp2_region g e Data.tuple2
+let gp_gdpat g e =
+  comp2_region g e
+    (fun a b -> (Data.l1_list a, b))
 
 type 'infexp alt =
   | AL_pat   of pat * 'infexp exp * 'infexp decls option
@@ -278,6 +280,11 @@ type 'infexp alt =
 let al_pat pat exp = function
   | Some decls -> TK.form_between pat (AL_pat (fst pat, fst exp, Some (fst decls))) decls
   | None       -> comp2_region pat exp (fun a b -> AL_pat (a, b, None))
+
+let al_gdpat pat gdp =
+  function
+    | Some decls -> TK.form_between pat (AL_gdpat (fst pat, Data.l1_list (fst gdp), Some (fst decls))) decls
+    | None       -> comp2_region pat gdp (fun a b -> AL_gdpat (a, Data.l1_list b, None))
 
 type 'infexp aexp =
   | Var    of id
