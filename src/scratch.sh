@@ -12,6 +12,8 @@ if [ x"$EMACS" != x ]; then
 	rlwrap=''
 fi
 
+. ./sh-vars
+
 $rlwrap ocaml -init scratchInit.ml \
 	$cmdline_byte_libs \
 	scratch.cma
