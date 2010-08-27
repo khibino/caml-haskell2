@@ -141,14 +141,10 @@ type fixity =
   | I_right
   | I_infix
 
-let comp2_region a b cons =
-  TK.form_between a (cons (fst a) (fst b)) b
+let comp2_region a b cons = TK.form_between a (cons (fst a) (fst b)) b
+let comp3_region a b c cons = TK.form_between a (cons (fst a) (fst b) (fst c)) c
 
-let tuple2_region a b =
-  comp2_region a b Data.tuple2
-
-(*let comp3_region a b c cons =
-  TK.form_between a (cons (fst a) (fst b) (fst c)) c*)
+let tuple2_region a b = comp2_region a b Data.tuple2
 
 type fix_later = unit
 
@@ -250,7 +246,7 @@ let lp_neg_float = TK.with_region (fun f -> LP_neg_float (~-. f))
 let lp_gcon gcon pl = comp2_region gcon pl (fun a b -> LP_gcon (a, Data.l1_list b))
 
 let p_infix lpat qconop pat =
-  TK.form_between lpat (P_infix (fst lpat, fst qconop, fst pat)) pat
+  comp3_region lpat qconop pat (fun a b c -> P_infix (a, b, c))
 let p_neg_int = TK.with_region (fun i -> P_neg_int (Int64.neg i))
 let p_neg_float = TK.with_region (fun f -> P_neg_float (~-. f))
 let p_lpat = TK.with_region (fun lp -> P_lpat lp)
@@ -263,7 +259,7 @@ type funlhs =
 let fl_var var apat_list =
   comp2_region var apat_list (fun a b -> FL_var (a, Data.l1_list b))
 let fl_op  p_left varop p_right =
-  TK.form_between p_left (FL_op (fst p_left, fst varop, fst p_right)) p_right
+  comp3_region p_left varop p_right (fun a b c -> FL_op (a, b, c))
 let fl_nest funlhs apat_list =
   comp2_region funlhs apat_list (fun a b -> FL_nest (a, Data.l1_list b))
 
@@ -319,12 +315,12 @@ type 'infexp alt =
   | AL_empty
 
 let al_pat pat exp = function
-  | Some decls -> TK.form_between pat (AL_pat (fst pat, fst exp, Some (fst decls))) decls
+  | Some decls -> comp3_region pat exp decls (fun a b c -> AL_pat (a, b, Some c))
   | None       -> comp2_region pat exp (fun a b -> AL_pat (a, b, None))
 
 let al_gdpat pat gdp =
   function
-    | Some decls -> TK.form_between pat (AL_gdpat (fst pat, Data.l1_list (fst gdp), Some (fst decls))) decls
+    | Some decls -> comp3_region pat gdp decls (fun a b c -> AL_gdpat (a, Data.l1_list b, Some c))
     | None       -> comp2_region pat gdp (fun a b -> AL_gdpat (a, Data.l1_list b, None))
 
 type 'infexp aexp =
@@ -362,7 +358,8 @@ type infexp =
   | LExp  of infexp lexp
 
 (* infexp construction *)
-let op_app lexp qop infexp = TK.form_between lexp (OpApp (fst lexp, fst qop, fst infexp)) infexp
+let op_app lexp qop infexp =
+  comp3_region lexp qop infexp (fun a b c -> OpApp (a, b, c))
 let neg = TK.with_region (fun infexp -> Neg infexp)
 let lexp = TK.with_region (fun lexp -> LExp lexp)
 
@@ -404,7 +401,7 @@ let lambda patl exp =
 let let_ decll exp =
   comp2_region decll exp (fun a b -> Let (a, b))
 let if_ p t e =
-  TK.form_between p (If (fst p, fst t, fst e)) e
+  comp3_region p t e (fun a b c -> If (a, b, c))
 let case exp altl =
   comp2_region exp altl (fun a b -> Case (a, Data.l1_list b))
 let do_ stmts exp = 
