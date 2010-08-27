@@ -401,7 +401,7 @@ let rec funlhs () =
 
 let rec dummy_exp_top () = p_fix_later
 
-and opt_where () = ~?(where **> ~$decls)
+and opt_where_decls () = ~?(where **> ~$decls)
 
 (* rhs 	→ 	= exp [where decls]      *)
 (* 	| 	gdrhs [where decls]      *)
@@ -514,8 +514,8 @@ and     alts () = l1_separated ~$alt semi
 (* 	| 	pat gdpat [where decls]      *)
 (* 	| 	    	(empty alternative) *)
 and     alt () =
-  HSY.al_pat *<$> ~$pat *<*> r_arrow **> ~$exp *<*> ~$opt_where
-  <|> HSY.al_gdpat *<$> ~$pat *<*> ~$gdpat *<*> ~$opt_where
+  HSY.al_pat *<$> ~$pat *<*> r_arrow **> ~$exp *<*> ~$opt_where_decls
+  <|> HSY.al_gdpat *<$> ~$pat *<*> ~$gdpat *<*> ~$opt_where_decls
     <|> pure_with_dummy_region HSY.AL_empty
 
 (* gdpat 	→ 	guards -> exp [ gdpat ]      *)
