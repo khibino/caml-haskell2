@@ -258,10 +258,8 @@ let     gtycon =
       <|> HSY.gt_arrow *<$> parened r_arrow
         <|> HSY.gt_tuple *<$> form_parened ~$commas1
 
-let rec dummy_type_top () = p_fix_later
-
 (* type 	→ 	btype [-> type]     	(function type) *)
-and     typ ()   =
+let rec typ ()   =
   HSY.typ_of_btype_list
   *<$> l1_separated ~$btype r_arrow
  
@@ -508,7 +506,7 @@ and     alts () = l1_separated ~$alt semi
 (* alt 	→ 	pat -> exp [where decls]      *)
 (* 	| 	pat gdpat [where decls]      *)
 (* 	| 	    	(empty alternative) *)
-and     alt () = (* p_fix_later *)
+and     alt () =
   HSY.al_pat *<$> ~$pat *<*> r_arrow **> ~$exp *<*> ~$opt_where
   <|> HSY.al_gdpat *<$> ~$pat *<*> ~$gdpat *<*> ~$opt_where
     <|> pure_with_dummy_region HSY.AL_empty
