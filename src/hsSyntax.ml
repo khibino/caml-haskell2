@@ -257,8 +257,15 @@ let p_lpat = TK.with_region (fun lp -> P_lpat lp)
 
 type funlhs =
   | FL_var  of var * pat apat list
-  | FL_op   of pat * pat
+  | FL_op   of pat * varop * pat
   | FL_nest of funlhs * pat apat list
+
+let fl_var var apat_list =
+  comp2_region var apat_list (fun a b -> FL_var (a, Data.l1_list b))
+let fl_op  p_left varop p_right =
+  TK.form_between p_left (FL_op (fst p_left, fst varop, fst p_right)) p_right
+let fl_nest funlhs apat_list =
+  comp2_region funlhs apat_list (fun a b -> FL_nest (a, Data.l1_list b))
 
 type 'infexp exp = 'infexp * (context option * type_) option
 

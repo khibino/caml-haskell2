@@ -386,7 +386,10 @@ and     fpat () = HSY.fpat *<$> qvar *<*> just_tk TK.KS_EQ **> ~$pat
 (* funlhs 	→ 	var apat { apat }      *)
 (* 	| 	pat varop pat      *)
 (* 	| 	( funlhs ) apat { apat }      *)
-
+let rec funlhs () =
+  HSY.fl_var *<$> var *<*> l1_some ~$apat
+  <|> HSY.fl_op *<$> ~$pat *<*> varop *<*> ~$pat
+    <|> HSY.fl_nest *<$> parened ~$funlhs *<*> l1_some ~$apat
 
 
 (* 10.5  Context-Free Syntax
