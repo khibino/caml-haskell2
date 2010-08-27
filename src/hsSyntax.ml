@@ -278,10 +278,16 @@ type 'infexp fbind = qvar * 'infexp exp
 
 let fbind qvar exp = comp2_region qvar exp Data.tuple2
 
-(* type 'infexp alt   = fix_later *)
-type 'infexp stmt  = fix_later
+
 type 'infexp decl  = fix_later
 type 'infexp decls = 'infexp decl list
+
+type 'infexp stmt  =
+  | ST_exp of 'infexp exp
+  | ST_act of pat * 'infexp exp
+  | ST_let of 'infexp decls
+
+let st_let_ decls = TK.with_region (fun a -> ST_let a) decls
 
 type 'infexp guard =
   | GD_pat of pat * 'infexp

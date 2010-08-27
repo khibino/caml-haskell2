@@ -524,12 +524,13 @@ and     alt () =
 and     gdpat () = l1_some (HSY.gp_gdpat *<$> ~$guards *<*> r_arrow **> ~$exp)
  
 (* stmts 	→ 	stmt1 … stmtn exp [;]     	(n ≥ 0) *)
-and     stmts () = HSY.do_ *<$> list_form (many stmt) *<*> ~$exp **< opt_semi
+and     stmts () = HSY.do_ *<$> list_form (many ~$stmt) *<*> ~$exp **< opt_semi
 (* stmt 	→ 	exp ;      *)
 (* 	| 	pat <- exp ;      *)
 (* 	| 	let decls ;      *)
 (* 	| 	;     	(empty statement) *)
-and     stmt = p_fix_later
+and     stmt () = (* p_fix_later *)
+  HSY.st_let_ *<$> ~$decls
  
 (* fbind 	→ 	qvar = exp      *)
 and     fbind () = HSY.fbind *<$> qvar *<*> eq **> ~$exp
