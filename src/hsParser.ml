@@ -39,10 +39,11 @@ let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) 
 let where = just_tk TK.K_WHERE
 let comma = just_tk TK.SP_COMMA
 let semi  = just_tk TK.SP_SEMI
+let eq      = just_tk TK.KS_EQ
 let l_arrow = just_tk TK.KS_L_ARROW
 let r_arrow = just_tk TK.KS_R_ARROW
 
-let opt_semi = ~? semi
+let opt_semi = ~?semi
 
 (* 汎用の構成子 *)
 (*   構文構造の並び、挟まれる構造、0以上のリスト、1以上のリスト *)
@@ -261,12 +262,12 @@ let     gtycon =
 (* type 	→ 	btype [-> type]     	(function type) *)
 let rec typ ()   =
   HSY.type_of_btype_list
-  *<$> l1_separated ~$btype r_arrow  (* 単純なbtypeのリスト構造になるのでタグを省く *)
+  *<$> l1_separated ~$btype r_arrow
  
 (* btype 	→ 	[btype] atype     	(type application) *)
 and     btype () =
   HSY.btype_of_atype_list
-  *<$> l1_some ~$atype  (* btypeの左再帰を除去してatypeのリストに *)
+  *<$> l1_some ~$atype  (* btypeの左再帰を除去 *)
 
  
 (* atype 	→ 	gtycon      *)
@@ -380,7 +381,7 @@ and     apat () =
                 <|> HSY.ap_irr *<$> just_tk TK.KS_TILDE **> ~$apat
  
 (* fpat 	→ 	qvar = pat      *)
-and     fpat () = HSY.fpat *<$> qvar *<*> just_tk TK.KS_EQ **> ~$pat
+and     fpat () = HSY.fpat *<$> qvar *<*> eq **> ~$pat
 
 
 (* funlhs 	→ 	var apat { apat }      *)
@@ -407,6 +408,7 @@ and opt_where_decls () = ~?(where **> ~$decls)
 (* 	| 	gdrhs [where decls]      *)
  
 (* gdrhs 	→ 	guards = exp [gdrhs]      *)
+and gdrhs () = HSY.gdrhs *<$> l1_some (HSY.gdrhs_pair *<$> ~$guards *<*> eq **> ~$exp)
  
 (* guards 	→ 	| guard1, …, guardn     	(n ≥ 1) *)
 and     guards () =
@@ -530,7 +532,7 @@ and     stmts () = HSY.do_ *<$> list_form (many stmt) *<*> ~$exp **< opt_semi
 and     stmt = p_fix_later
  
 (* fbind 	→ 	qvar = exp      *)
-and     fbind () = HSY.fbind *<$> qvar *<*> just_tk TK.KS_EQ **> ~$exp
+and     fbind () = HSY.fbind *<$> qvar *<*> eq **> ~$exp
  
 
 (* 10.5  Context-Free Syntax *)

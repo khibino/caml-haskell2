@@ -294,6 +294,11 @@ let gd_exp exp    = TK.with_region (fun a -> GD_exp a) exp
 
 type 'infexp guards = 'infexp guard list
 
+type 'infexp gdrhs = ('infexp guards * 'infexp exp) list
+
+let gdrhs_pair gd exp = comp2_region gd exp Data.tuple2
+let gdrhs pair_list = TK.with_region Data.l1_list pair_list
+
 type 'infexp qual  =
   | Q_gen of pat * 'infexp exp
   | Q_let of 'infexp decls
