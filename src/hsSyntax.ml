@@ -286,8 +286,24 @@ type 'infexp stmt  =
   | ST_exp of 'infexp exp
   | ST_act of pat * 'infexp exp
   | ST_let of 'infexp decls
+  | ST_empty
 
+(*
+(* 'infexp stmt list よりもこちらの表現の方が parse 時には自然?
+   後で変えるかも *)
+type 'infexp stmts =
+  | SS_cons of 'infexp stmt * 'infexp stmts
+  | SS_exp of 'infexp exp
+*)
+
+let st_exp exp = TK.with_region (fun a -> ST_exp a) exp
+let st_act pat exp = comp2_region pat exp (fun a b -> ST_act (a, b))
 let st_let_ decls = TK.with_region (fun a -> ST_let a) decls
+let st_empty semi = TK.with_region (fun _ -> ST_empty) semi
+let stmts_cons_nil exp =
+  TK.with_region (fun a -> ([], a)) exp
+let stmts_cons stmt stmt_list =
+  comp2_region stmt stmt_list (fun a (b, c) -> (a :: b, c))
 
 type 'infexp guard =
   | GD_pat of pat * 'infexp
@@ -415,7 +431,6 @@ let if_ p t e =
   comp3_region p t e (fun a b c -> If (a, b, c))
 let case exp altl =
   comp2_region exp altl (fun a b -> Case (a, Data.l1_list b))
-let do_ stmts exp = 
-  comp2_region stmts exp (fun a b -> Do (a, b))
+let do_ stmts = TK.with_region (fun (a, b) -> Do (a, b)) stmts
 let fexp : infexp fexp * TK.region -> infexp lexp * TK.region =
   TK.with_region (fun fexp -> FExp fexp)

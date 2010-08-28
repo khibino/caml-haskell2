@@ -36,10 +36,12 @@ let p_fix_later : (TK.t, unit * TK.region) parser = pure ((), region_fix_later)
 let conid = untag_tk (function | TK.T_CONID s -> Some s | _ -> None)
 let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) <|> conid
 
+let let_  = just_tk TK.K_LET
 let where = just_tk TK.K_WHERE
 let comma = just_tk TK.SP_COMMA
 let semi  = just_tk TK.SP_SEMI
 let eq      = just_tk TK.KS_EQ
+let minus   = just_tk TK.KS_MINUS
 let l_arrow = just_tk TK.KS_L_ARROW
 let r_arrow = just_tk TK.KS_R_ARROW
 
@@ -260,7 +262,7 @@ let     gtycon =
         <|> HSY.gt_tuple *<$> form_parened ~$commas1
 
 (* type 	→ 	btype [-> type]     	(function type) *)
-let rec typ ()   =
+let rec type_ ()   =
   HSY.type_of_btype_list
   *<$> l1_separated ~$btype r_arrow
  
@@ -280,9 +282,9 @@ and     atype () =
   HSY.at_gtc *<$> gtycon
   <|> HSY.at_tyvar *<$> tyvar
     <|> parened (HSY.at_tuple
-                 *<$> l1_separated_2 ~$typ comma)
-      <|> bracketed (HSY.at_list *<$> ~$typ)
-        <|> parened (HSY.at_paren *<$> ~$typ)
+                 *<$> l1_separated_2 ~$type_ comma)
+      <|> bracketed (HSY.at_list *<$> ~$type_)
+        <|> parened (HSY.at_paren *<$> ~$type_)
 
 (* class 	→ 	qtycls tyvar      *)
 let class_ = HSY.class_ *<$> qtycls *<*> tyvar
@@ -342,7 +344,7 @@ let context =  list_form (Data.cons_nil *<$> class_)
 (* 	| 	lpat      *)
 let rec pat () =
   HSY.p_infix *<$> ~$lpat *<*> qconop *<*> ~$pat
-  <|> just_tk TK.KS_MINUS **> (HSY.p_neg_int *<$> integer
+  <|> minus **> (HSY.p_neg_int *<$> integer
                                <|> HSY.p_neg_float *<$> float)
     <|> HSY.p_lpat *<$> ~$lpat
  
@@ -351,7 +353,7 @@ let rec pat () =
 (* 	| 	gcon apat1 … apatk     	(arity gcon  =  k, k ≥ 1) *)
 and     lpat () =
   HSY.lp_apat *<$> ~$apat
-  <|> just_tk TK.KS_MINUS **> (HSY.lp_neg_int *<$> integer
+  <|> minus **> (HSY.lp_neg_int *<$> integer
                                <|> HSY.lp_neg_float *<$> float)
     <|> HSY.lp_gcon *<$> gcon *<*> l1_some ~$apat
 
@@ -430,13 +432,13 @@ and     exp () =
   *<*> ~?(just_tk TK.KS_2_COLON
           **|> (HSY.exp_typ
                 *<$> ~?(form_append context (just_tk TK.KS_R_W_ARROW))
-                *<*> ~$typ))
+                *<*> ~$type_))
  
 (* infixexp 	→ 	lexp qop infixexp     	(infix operator application) *)
 (* 	| 	- infixexp     	(prefix negation) *)
 (* 	| 	lexp      *)
 and     infixexp () = HSY.op_app *<$> ~$lexp *<*> qop *<*> ~$infixexp
-  <|> HSY.neg *<$> just_tk TK.KS_MINUS **|> ~$infixexp <|> HSY.lexp *<$> ~$lexp
+  <|> HSY.neg *<$> minus **|> ~$infixexp <|> HSY.lexp *<$> ~$lexp
 
 (* lexp 	→ 	\ apat1 … apatn -> exp     	(lambda abstraction, n ≥ 1) *)
 (* 	| 	let decls in exp     	(let expression) *)
@@ -447,14 +449,14 @@ and     infixexp () = HSY.op_app *<$> ~$lexp *<*> qop *<*> ~$infixexp
 and     lexp () =
   HSY.lambda
   *<$> just_tk TK.KS_B_SLASH **|> l1_some ~$apat *<*> r_arrow **> ~$exp
-    <|> just_tk TK.K_LET **|> (HSY.let_ *<$> ~$decls *<*> just_tk TK.K_IN **|> ~$exp)
+    <|> let_ **|> (HSY.let_ *<$> ~$decls *<*> just_tk TK.K_IN **|> ~$exp)
       <|> just_tk TK.K_IF **|> (HSY.if_ *<$> ~$exp **< opt_semi
                                 *<*> just_tk TK.K_THEN **|> ~$exp **< opt_semi
                                 *<*> just_tk TK.K_ELSE **|> ~$exp)
         <|> just_tk TK.K_CASE **|> (HSY.case *<$>
                                       ~$exp *<*>
                                       just_tk TK.K_OF **|> braced ~$alts)
-          <|> just_tk TK.K_DO **|> braced ~$stmts
+          <|> HSY.do_ *<$> just_tk TK.K_DO **|> braced ~$stmts
             <|> HSY.fexp *<$> ~$fexp
 
 (* fexp 	→ 	[fexp] aexp     	(function application) *)
@@ -491,7 +493,7 @@ and     aexp_without_lu () =
                            *<$> ~$exp
                            *<*> just_tk TK.KS_BAR **|> l1_separated ~$qual comma)
               <|> parened (HSY.left_sec *<$> ~$infixexp *<*> qop)
-                <|> parened (HSY.right_sec *<$> ~!(just_tk TK.KS_MINUS) **> qop *<*> ~$infixexp)
+                <|> parened (HSY.right_sec *<$> ~!minus **> qop *<*> ~$infixexp)
 
 
 and    braced_fbind_list_1 () = braced (l1_separated (~$fbind) comma)
@@ -524,13 +526,20 @@ and     alt () =
 and     gdpat () = l1_some (HSY.gp_gdpat *<$> ~$guards *<*> r_arrow **> ~$exp)
  
 (* stmts 	→ 	stmt1 … stmtn exp [;]     	(n ≥ 0) *)
-and     stmts () = HSY.do_ *<$> list_form (many ~$stmt) *<*> ~$exp **< opt_semi
+and     stmts () =
+  HSY.stmts_cons *<$> ~$stmt *<*> ~$stmts
+  <|> HSY.stmts_cons_nil *<$> ~$exp **< opt_semi
+
+(* and     stmts () = HSY.do_ *<$> list_form ~$stmt_list *<*> ~$exp *)
 (* stmt 	→ 	exp ;      *)
 (* 	| 	pat <- exp ;      *)
 (* 	| 	let decls ;      *)
 (* 	| 	;     	(empty statement) *)
-and     stmt () = (* p_fix_later *)
-  HSY.st_let_ *<$> ~$decls
+and     stmt () =
+  (HSY.st_act *<$> ~$pat *<*> l_arrow **> ~$exp
+   <|> HSY.st_exp *<$> ~$exp
+     <|> HSY.st_let_ *<$> let_ **> ~$decls) **< semi
+  <|> HSY.st_empty *<$> semi
  
 (* fbind 	→ 	qvar = exp      *)
 and     fbind () = HSY.fbind *<$> qvar *<*> eq **> ~$exp
@@ -612,8 +621,11 @@ let test_exp : (TK.t, HSY.infexp HSY.exp * TK.region) parser =
 let test_lexp : (TK.t, HSY.infexp HSY.lexp * TK.region) parser =
   (fst *<$> drop_any) **> ~$lexp
 
-let test_typ : (TK.t, HSY.type_ * TK.region) parser =
-  (fst *<$> drop_any) **> ~$typ
+let test_type : (TK.t, HSY.type_ * TK.region) parser =
+  (fst *<$> drop_any) **> ~$type_
 
 let test_apat : (TK.t, HSY.pat HSY.apat * TK.region) parser =
   (fst *<$> drop_any) **> ~$apat
+
+let test_decls : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
+  ~$decls
