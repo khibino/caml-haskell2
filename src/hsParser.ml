@@ -42,6 +42,7 @@ let comma = just_tk TK.SP_COMMA
 let semi  = just_tk TK.SP_SEMI
 let eq      = just_tk TK.KS_EQ
 let minus   = just_tk TK.KS_MINUS
+let two_colon = just_tk TK.KS_2_COLON
 let l_arrow = just_tk TK.KS_L_ARROW
 let r_arrow = just_tk TK.KS_R_ARROW
 
@@ -183,6 +184,10 @@ let qconsym = qual_id_tk (function
 let integer = untag_tk (function | TK.L_INTEGER i -> Some i | _ -> None)
 let float   = untag_tk (function | TK.L_FLOAT f -> Some f | _ -> None)
 
+let fixity_int = Data.with_snd Int64.to_int *<$> untag_tk (function
+  | TK.L_INTEGER i when 0L <= i && i <= 9L -> Some i
+  | TK.L_INTEGER i -> (* generate error infomation ; *) None
+  | _ -> None)
 
 (* 10.5  Context-Free Syntax
    -- 変数とシンボルの定義は他から参照されるので先に定義 -- 
@@ -294,6 +299,9 @@ let class_ = HSY.class_ *<$> qtycls *<*> tyvar
 let context =  list_form (Data.cons_nil *<$> class_)
   <|> parened (separated class_ comma (* class list *) )
 
+(* [context =>] *)
+let may_be_context = ~?(form_append context (just_tk TK.KS_R_W_ARROW))
+
 (* 	| 	qtycls ( tyvar atype1 … atypen )     	(n ≥ 1) *)
 (* scontext 	→ 	simpleclass      *)
 (* 	| 	( simpleclass1 , … , simpleclassn )     	(n ≥ 0) *)
@@ -404,6 +412,7 @@ let rec funlhs () =
 
 let rec dummy_exp_top () = p_fix_later
 
+(* [where decls] *)
 and opt_where_decls () = ~?(where **> ~$decls)
 
 (* rhs 	→ 	= exp [where decls]      *)
@@ -420,19 +429,16 @@ and     guards () =
 (* 	| 	let decls     	(local declaration) *)
 (* 	| 	infixexp     	(boolean guard) *)
 and     guard () =
-  HSY.gd_pat *<$> ~$pat *<*> l_arrow **> ~$infixexp
-  <|> HSY.gd_let *<$> ~$decls
-    <|> HSY.gd_exp *<$> ~$infixexp
+  HSY.gu_pat *<$> ~$pat *<*> l_arrow **> ~$infixexp
+  <|> HSY.gu_let *<$> ~$decls
+    <|> HSY.gu_exp *<$> ~$infixexp
 
 (* exp 	→ 	infixexp :: [context =>] type     	(expression type signature) *)
 (* 	| 	infixexp      *)
 and     exp () =
   HSY.exp
   *<$> ~$infixexp
-  *<*> ~?(just_tk TK.KS_2_COLON
-          **|> (HSY.exp_typ
-                *<$> ~?(form_append context (just_tk TK.KS_R_W_ARROW))
-                *<*> ~$type_))
+  *<*> ~?(two_colon **|> (HSY.exp_typ *<$> may_be_context *<*> ~$type_))
  
 (* infixexp 	→ 	lexp qop infixexp     	(infix operator application) *)
 (* 	| 	- infixexp     	(prefix negation) *)
@@ -546,6 +552,15 @@ and     fbind () = HSY.fbind *<$> qvar *<*> eq **> ~$exp
  
 
 (* 10.5  Context-Free Syntax *)
+
+(* gendecl 	→ 	vars :: [context =>] type     	(type signature) *)
+(* 	| 	fixity [integer] ops     	(fixity declaration) *)
+(* 	| 	    	(empty declaration) *)
+and     gendecl () =
+  HSY.gd_vars *<$> vars *<*> two_colon **> may_be_context *<*> ~$type_
+  <|> HSY.gd_fixity *<$> fixity *<*> ~?fixity_int *<*> ops
+    <|> pure_with_dummy_region HSY.GD_empty
+
 (* Decls *)
 
 (* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
@@ -555,10 +570,6 @@ and     decls () = braced (separated decl semi)
 (* 	| 	(funlhs | pat) rhs      *)
 and     decl = p_fix_later
 
-
-(* gendecl 	→ 	vars :: [context =>] type     	(type signature) *)
-(* 	| 	fixity [integer] ops     	(fixity declaration) *)
-(* 	| 	    	(empty declaration) *)
 
 (* cdecls 	→ 	{ cdecl1 ; … ; cdecln }     	(n ≥ 0) *)
 (* cdecl 	→ 	gendecl      *)

@@ -141,6 +141,9 @@ type fixity =
   | I_right
   | I_infix
 
+let default_fixity = I_left
+let default_level  = 9
+
 let comp2_region a b cons = TK.form_between a (cons (fst a) (fst b)) b
 let comp3_region a b c cons = TK.form_between a (cons (fst a) (fst b) (fst c)) c
 
@@ -198,6 +201,7 @@ type class_ = qtycls * tyvar
 let class_ = tuple2_region
 
 type context = class_ list
+type may_be_context = context option
 
 type 'pat fpat = (qvar * 'pat)
 
@@ -263,7 +267,7 @@ let fl_op  p_left varop p_right =
 let fl_nest funlhs apat_list =
   comp2_region funlhs apat_list (fun a b -> FL_nest (a, Data.l1_list b))
 
-type 'infexp exp = 'infexp * (context option * type_) option
+type 'infexp exp = 'infexp * (may_be_context * type_) option
 
 let exp_typ context type_ = match context with
   | Some c -> comp2_region c type_ (fun a b -> ((Some a), b))
@@ -278,6 +282,18 @@ type 'infexp fbind = qvar * 'infexp exp
 
 let fbind qvar exp = comp2_region qvar exp Data.tuple2
 
+type gendecl =
+  | GD_vars of var list * may_be_context * type_
+  | GD_fixity of fixity * int * op list
+  | GD_empty
+
+let gd_vars vars context type_ = match context with
+  | Some cont -> comp3_region vars cont type_ (fun a b c -> GD_vars (Data.l1_list a, Some b, c))
+  | None      -> comp2_region vars type_      (fun a c -> GD_vars (Data.l1_list a, None, c))
+
+let gd_fixity fixity level ops = match level with
+  | Some level -> comp3_region fixity level ops (fun a b c -> GD_fixity (a, b, Data.l1_list c))
+  | None       -> comp2_region fixity ops       (fun a c -> GD_fixity (a, default_level, Data.l1_list c))
 
 type 'infexp decl  = fix_later
 type 'infexp decls = 'infexp decl list
@@ -306,13 +322,13 @@ let stmts_cons stmt stmt_list =
   comp2_region stmt stmt_list (fun a (b, c) -> (a :: b, c))
 
 type 'infexp guard =
-  | GD_pat of pat * 'infexp
-  | GD_let of 'infexp decls
-  | GD_exp of 'infexp
+  | GU_pat of pat * 'infexp
+  | GU_let of 'infexp decls
+  | GU_exp of 'infexp
 
-let gd_pat pat infexp = comp2_region pat infexp (fun a b -> GD_pat (a, b))
-let gd_let decll  = TK.with_region (fun a -> GD_let a) decll
-let gd_exp exp    = TK.with_region (fun a -> GD_exp a) exp
+let gu_pat pat infexp = comp2_region pat infexp (fun a b -> GU_pat (a, b))
+let gu_let decll  = TK.with_region (fun a -> GU_let a) decll
+let gu_exp exp    = TK.with_region (fun a -> GU_exp a) exp
 
 type 'infexp guards = 'infexp guard list
 
