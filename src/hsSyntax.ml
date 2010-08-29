@@ -238,9 +238,7 @@ type pat  =
 
 let fpat = tuple2_region
 
-let ap_var var = function
-  | Some as_p -> comp2_region var as_p (fun a b -> AP_var (a, Some b))
-  | None      -> (AP_var (fst var, None), snd var)
+let ap_var var as_p = comp2_right_opt var as_p (fun a b -> AP_var (a, b))
 
 let ap_gcon = TK.with_region (fun gcon -> AP_gcon gcon)
 let ap_qcon qcon flist = comp2_region qcon flist (fun a b -> AP_qcon (a, b))
@@ -277,14 +275,8 @@ let fl_nest funlhs apat_list =
 
 type 'infexp exp = 'infexp * (may_be_context * type_) option
 
-let exp_typ context type_ = match context with
-  | Some c -> comp2_region c type_ (fun a b -> ((Some a), b))
-  | None   -> ((None, fst type_), snd type_)
-
-let exp infexp = function
-  | Some type_ -> comp2_region infexp type_ (fun a b -> (a, Some b))
-  | None       -> ((fst infexp, None), snd infexp)
-
+let exp_type context type_ = comp2_left_opt context type_ Data.tuple2
+let exp infexp type_ = comp2_right_opt infexp type_ Data.tuple2
 
 type 'infexp fbind = qvar * 'infexp exp
 

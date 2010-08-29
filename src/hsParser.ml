@@ -438,7 +438,7 @@ and     guard () =
 and     exp () =
   HSY.exp
   *<$> ~$infixexp
-  *<*> ~?(two_colon **|> (HSY.exp_typ *<$> may_be_context *<*> ~$type_))
+  *<*> ~?(two_colon **|> (HSY.exp_type *<$> may_be_context *<*> ~$type_))
  
 (* infixexp 	→ 	lexp qop infixexp     	(infix operator application) *)
 (* 	| 	- infixexp     	(prefix negation) *)
