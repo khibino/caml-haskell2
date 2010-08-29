@@ -149,6 +149,14 @@ let comp3_region a b c cons = TK.form_between a (cons (fst a) (fst b) (fst c)) c
 
 let tuple2_region a b = comp2_region a b Data.tuple2
 
+let comp2_left_opt  l r cons = match l with
+  | Some l -> comp2_region l r (fun a b -> cons (Some a) b)
+  | None   -> TK.with_region (fun b -> cons None b) r
+
+let comp2_right_opt l r cons = match r with
+  | Some r -> comp2_region l r (fun a b -> cons a (Some b))
+  | None   -> TK.with_region (fun a -> cons a None) l
+
 type fix_later = unit
 
 type gtycon =
@@ -280,7 +288,7 @@ let exp infexp = function
 
 type 'infexp fbind = qvar * 'infexp exp
 
-let fbind qvar exp = comp2_region qvar exp Data.tuple2
+let fbind qvar exp = tuple2_region qvar exp
 
 type gendecl =
   | GD_vars of var list * may_be_context * type_
@@ -295,7 +303,14 @@ let gd_fixity fixity level ops = match level with
   | Some level -> comp3_region fixity level ops (fun a b c -> GD_fixity (a, b, Data.l1_list c))
   | None       -> comp2_region fixity ops       (fun a c -> GD_fixity (a, default_level, Data.l1_list c))
 
+type lhs =
+  | LHS_fun of funlhs
+  | LHS_pat of pat
+
 type 'infexp decl  = fix_later
+(*  | D_gen of gendecl
+  | D_val of lhs * rhs *)
+
 type 'infexp decls = 'infexp decl list
 
 type 'infexp stmt  =
@@ -334,8 +349,15 @@ type 'infexp guards = 'infexp guard list
 
 type 'infexp gdrhs = ('infexp guards * 'infexp exp) list
 
-let gdrhs_pair gd exp = comp2_region gd exp Data.tuple2
+let gdrhs_pair gd exp = tuple2_region gd exp
 let gdrhs pair_list = TK.with_region Data.l1_list pair_list
+
+type 'infexp rhs =
+  | RHS_exp of 'infexp exp   * 'infexp decls option
+  | RHS_gd  of 'infexp gdrhs * 'infexp decls option
+
+let rhs_exp exp   decls = comp2_right_opt exp   decls (fun a b -> RHS_exp (a, b))
+let rhs_gd  gdrhs decls = comp2_right_opt gdrhs decls (fun a b -> RHS_gd (a, b))
 
 type 'infexp qual  =
   | Q_gen of pat * 'infexp exp
