@@ -291,6 +291,7 @@ and     atype () =
         <|> parened (HSY.at_paren *<$> ~$type_)
 
 (* class 	→ 	qtycls tyvar      *)
+(* 	| 	qtycls ( tyvar atype1 … atypen )     	(n ≥ 1) *)
 let class_ = HSY.class_ *<$> qtycls *<*> tyvar
 
 (* context 	→ 	class      *)
@@ -301,7 +302,6 @@ let context =  list_form (Data.cons_nil *<$> class_)
 (* [context =>] *)
 let may_be_context = ~?(form_append context (just_tk TK.KS_R_W_ARROW))
 
-(* 	| 	qtycls ( tyvar atype1 … atypen )     	(n ≥ 1) *)
 (* scontext 	→ 	simpleclass      *)
 (* 	| 	( simpleclass1 , … , simpleclassn )     	(n ≥ 0) *)
 (* simpleclass	→ 	qtycls tyvar      *)
