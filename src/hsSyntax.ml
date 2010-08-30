@@ -299,9 +299,12 @@ type lhs =
   | LHS_fun of funlhs
   | LHS_pat of pat
 
-type 'infexp decl  = fix_later
-(*  | D_gen of gendecl
-  | D_val of lhs * rhs *)
+let lhs_fun funlhs = TK.with_region (fun a -> LHS_fun a) funlhs
+let lhs_pat pat    = TK.with_region (fun a -> LHS_pat a) pat
+
+type 'infexp decl  =
+  | D_gen of gendecl
+  | D_val of lhs * 'infexp rhs
 
 and  'infexp decls = 'infexp decl list
 
@@ -318,11 +321,14 @@ and  'infexp rhs =
   | RHS_exp of 'infexp exp   * 'infexp decls option
   | RHS_gd  of 'infexp gdrhs * 'infexp decls option
 
+let d_gen gendecl = TK.with_region (fun a -> D_gen a) gendecl
+let d_val lhs rhs = comp2_region lhs rhs (fun a b -> D_val (a, b))
+
 let gu_pat pat infexp = comp2_region pat infexp (fun a b -> GU_pat (a, b))
 let gu_let decll  = TK.with_region (fun a -> GU_let a) decll
 let gu_exp exp    = TK.with_region (fun a -> GU_exp a) exp
 
-let gdrhs_pair gd exp = tuple2_region gd exp
+let gdrhs_pair gd exp = comp2_region gd exp (fun a b -> (Data.l1_list a, b))
 let gdrhs pair_list = TK.with_region Data.l1_list pair_list
 
 let rhs_exp exp   decls = comp2_right_opt exp   decls (fun a b -> RHS_exp (a, b))

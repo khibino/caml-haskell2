@@ -71,13 +71,6 @@ let braced     p = form_braced     ((lift_a fst) p)
 let backquoted p = form_backquoted ((lift_a fst) p)
 
 module Raw = struct
-  (* リストとなる構文要素 - 長さ0でも可 - 位置情報付き *)
-  let some = Simple.Combinator.some
-
-  let rec separated a d =
-    Data.cons *<$> a *<*> d **> ~$(fun () -> separated a d)
-    <|> pure []
-
   (* 長さ1以上のリスト 意図的に0以上のリストと型が異なるようにしている *)
   let l1_some p = Data.l1_list_cons *<$> p *<*> many p
 
@@ -87,6 +80,12 @@ module Raw = struct
 
   let l1_separated_2 a d =
     Data.l1_cons *<$> a *<*> d **> l1_separated a d
+
+  (* リストとなる構文要素 - 長さ0でも可 - 位置情報付き *)
+  let some = Simple.Combinator.some
+
+  let separated a d =
+    Data.l1_list *<$> l1_separated a d <|> pure []
 end
 
 (* リストとなる構文要素 - 長さ0でも可 - 位置情報付き *)
@@ -413,13 +412,18 @@ let rec funlhs () =
 let rec dummy_exp_top () = p_fix_later
 
 (* [where decls] *)
-and opt_where_decls () = ~?(where **> ~$decls)
+and     opt_where_decls () = ~?(where **> ~$decls)
 
 (* rhs 	→ 	= exp [where decls]      *)
 (* 	| 	gdrhs [where decls]      *)
+and     rhs () =
+  HSY.rhs_exp *<$> eq **> ~$exp *<*> ~$opt_where_decls
+  <|> HSY.rhs_gd *<$> ~$gdrhs *<*> ~$opt_where_decls
  
 (* gdrhs 	→ 	guards = exp [gdrhs]      *)
-and gdrhs () = HSY.gdrhs *<$> l1_some (HSY.gdrhs_pair *<$> ~$guards *<*> eq **> ~$exp)
+and     gdrhs () = HSY.gdrhs *<$> l1_some (HSY.gdrhs_pair
+                                           *<$> ~$guards
+                                           *<*> eq **> ~$exp)
  
 (* guards 	→ 	| guard1, …, guardn     	(n ≥ 1) *)
 and     guards () =
@@ -564,13 +568,16 @@ and     gendecl () =
 (* Decls *)
 
 (* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
-and     decls () = braced (separated decl semi)
+and     decls () = braced (separated ~$decl semi)
 
 (* decl 	→ 	gendecl      *)
 (* 	| 	(funlhs | pat) rhs      *)
-and     decl = p_fix_later
-
-
+and     decl () =
+  HSY.d_val
+  *<$> (HSY.lhs_fun *<$> ~$funlhs <|> HSY.lhs_pat *<$> ~$pat)
+  *<*> ~$rhs
+  <|> HSY.d_gen *<$> ~$gendecl (* gendeclにはemptyがあるので後 *)
+      
 (* cdecls 	→ 	{ cdecl1 ; … ; cdecln }     	(n ≥ 0) *)
 (* cdecl 	→ 	gendecl      *)
 (* 	| 	(funlhs | var) rhs      *)
@@ -640,3 +647,9 @@ let test_apat : (TK.t, HSY.pat HSY.apat * TK.region) parser =
 
 let test_decls : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
   ~$decls
+
+let test_decl : (TK.t, HSY.infexp HSY.decl * TK.region) parser =
+  ~$decl
+
+let test_decls_cont : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
+  separated ~$decl semi
