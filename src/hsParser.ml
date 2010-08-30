@@ -202,6 +202,9 @@ let qvar = qvarid <|> parened qvarsym
 (* con 	→ 	conid | ( consym )     	(constructor) *)
 let con = conid <|> parened consym
 
+(* gconsym 	→ 	: | qconsym      *)
+(* gconsym は qcon から使われている *)
+(* gconsym is used by qcon above *)
 let gconsym = HSY.tk_id_colon *<$> just_tk TK.KS_COLON <|> qconsym
 (* qcon 	→ 	qconid | ( gconsym )     	(qualified constructor) *)
 let qcon = qconid <|> parened gconsym
@@ -218,9 +221,6 @@ let qconop = gconsym <|> backquoted qconid
 let op = varop <|> conop
 (* qop 	→ 	qvarop | qconop     	(qualified operator) *)
 let qop = qvarop <|> qconop
-(* gconsym 	→ 	: | qconsym      *)
-(* gconsym は qcon から使われている ↑ *)
-(* gconsym is used by qcon above *)
  
 (* gcon 	→ 	()      *)
 (* 	| 	[]      *)
@@ -233,8 +233,6 @@ let gcon =
       <|> qcon
 
 
-(* *)
- 
 (* ops 	→ 	op1 , … , opn     	(n ≥ 1) *)
 let ops = l1_separated op comma
 
