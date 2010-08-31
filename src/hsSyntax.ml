@@ -205,8 +205,17 @@ let at_tuple = TK.with_region (fun types -> AT_tuple (Data.l1_list types))
 let at_list  = TK.with_region (fun type_ -> AT_list  type_)
 let at_paren = TK.with_region (fun type_ -> AT_paren type_)
 
-type class_ = qtycls * tyvar
-let class_ = tuple2_region
+(*
+type class_tyvar =
+  | CT_val of tyvar
+  | CT_app of tyvar * atype list
+*)
+
+type class_ = qtycls * (tyvar * atype list)
+let class_tval qtycls tyvar =
+  comp2_region qtycls tyvar (fun a b -> (a, (b, [])))
+let class_tapp qtycls tyvar atype_list =
+  comp3_region qtycls tyvar atype_list (fun a b c -> (a, (b, Data.l1_list c)))
 
 type context = class_ list
 type may_be_context = context option

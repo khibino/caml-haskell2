@@ -45,6 +45,8 @@ let minus   = just_tk TK.KS_MINUS
 let two_colon = just_tk TK.KS_2_COLON
 let l_arrow = just_tk TK.KS_L_ARROW
 let r_arrow = just_tk TK.KS_R_ARROW
+let l_paren = just_tk TK.SP_LEFT_PAREN
+let r_paren = just_tk TK.SP_RIGHT_PAREN
 
 let opt_semi = ~?semi
 
@@ -60,7 +62,7 @@ let ( **<| ) = form_append
 let form_between a b p = TK.form_between *<$> a *<*> p *<*> b
 let between a b = form_between a b |.| (lift_a fst)
 
-let form_parened    p = form_between (just_tk TK.SP_LEFT_PAREN)   (just_tk TK.SP_RIGHT_PAREN)   p
+let form_parened    p = form_between l_paren                      r_paren   p
 let form_bracketed  p = form_between (just_tk TK.SP_LEFT_BRACKET) (just_tk TK.SP_RIGHT_BRACKET) p
 let form_braced     p = form_between (just_tk TK.SP_LEFT_BRACE)   (just_tk TK.SP_RIGHT_BRACE)   p
 let form_backquoted p = form_between (just_tk TK.SP_B_QUOTE)      (just_tk TK.SP_B_QUOTE)       p
@@ -290,7 +292,9 @@ and     atype () =
 
 (* class 	→ 	qtycls tyvar      *)
 (* 	| 	qtycls ( tyvar atype1 … atypen )     	(n ≥ 1) *)
-let class_ = HSY.class_ *<$> qtycls *<*> tyvar
+let class_ =
+  HSY.class_tval *<$> qtycls *<*> tyvar
+  <|> HSY.class_tapp *<$> qtycls *<*> l_paren **> tyvar *<*> l1_some ~$atype **< r_paren
 
 (* context 	→ 	class      *)
 (* 	| 	( class1 , … , classn )     	(n ≥ 0) *)

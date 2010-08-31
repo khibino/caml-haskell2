@@ -48,5 +48,6 @@ let s1_lambda () = parse_string "\\ (1:xs,'a':ys) -> (xs, ys)" P.test_exp
 let s1_lcomp  () = parse_string "[(x, y) | x <- [1,2,3], y <- ['a','b'] ]" P.test_exp
 let s1_lbl_upd () = parse_string "x { Foo.a = y, Foo.b = z } { Foo.c = p, Foo.d = q }" P.test_exp
 let s1_do () = parse_string "do { let { x = 1; y = 2}; 1 }" P.test_exp
+let s1_t_class () = parse_string "p :: (Eq (f b), Functor f) => (a -> b) -> f a -> f b -> Bool" P.test_exp
 
 let s2_t_fun () = parse_string "(Either String a, b -> c)" P.test_type
