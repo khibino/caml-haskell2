@@ -328,7 +328,9 @@ let simpletype = HSY.simpletype *<$> tycon *<*> many' tyvar
 let constr_arg = HSY.ca_satype *<$> exclam **|> ~$atype <|> HSY.ca_btype *<$> ~$btype
 
 (* fielddecl 	→ 	vars :: (type | ! atype)      *)
-let fielddecl = p_fix_later
+let fielddecl =
+  HSY.fielddecl *<$> vars *<*> two_colon **> (HSY.cf_type *<$> ~$type_
+                                              <|> HSY.cf_satype *<$> ~$atype)
 
 (* constr 	→ 	con [!] atype1 … [!] atypek     	(arity con  =  k, k ≥ 0) *)
 (* 	| 	(btype | ! atype) conop (btype | ! atype)     	(infix conop) *)

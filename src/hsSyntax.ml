@@ -136,6 +136,9 @@ type lit =
   | Int  of int64
   | Flo  of float
 
+type ops  = op list
+type vars = var list
+
 type fixity =
   | I_left
   | I_right
@@ -232,13 +235,23 @@ let may_banana_atype exclam atype =
     | Some _ -> (a, true)
     | None   -> (a, false))
 
-type fielddecl = fix_later
+type constr_fld =
+  | CF_type of type_
+  | CF_satype of atype
+
+let cf_type type_ = TK.with_region (fun a -> CF_type a) type_
+let cf_satype sat = TK.with_region (fun a -> CF_satype a) sat
+
+type fielddecl = vars * constr_fld
+
+let fielddecl vars constr_fld =
+  comp2_region vars constr_fld (fun a b -> (Data.l1_list a, b))
 
 type constr_arg =
   | CA_btype  of btype
   | CA_satype of atype
 
-let ca_btype bt   = TK.with_region (fun a -> CA_btype a) bt
+let ca_btype btype = TK.with_region (fun a -> CA_btype a) btype
 let ca_satype sat = TK.with_region (fun a -> CA_satype a) sat
 
 type constr = 
@@ -322,8 +335,8 @@ type 'infexp fbind = qvar * 'infexp exp
 let fbind qvar exp = tuple2_region qvar exp
 
 type gendecl =
-  | GD_vars of var list * may_be_context * type_
-  | GD_fixity of fixity * int * op list
+  | GD_vars of vars * may_be_context * type_
+  | GD_fixity of fixity * int * ops
   | GD_empty
 
 let gd_vars vars context type_ = match context with

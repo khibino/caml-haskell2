@@ -51,3 +51,5 @@ let s1_do () = parse_string "do { let { x = 1; y = 2}; 1 }" P.test_exp
 let s1_t_class () = parse_string "p :: (Eq (f b), Functor f) => (a -> b) -> f a -> f b -> Bool" P.test_exp
 
 let s2_t_fun () = parse_string "(Either String a, b -> c)" P.test_type
+
+let s_constr () = parse_string_raw "Foo !a b !c" P.test_constr
