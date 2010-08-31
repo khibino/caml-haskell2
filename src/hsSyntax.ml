@@ -226,6 +226,30 @@ let simpleclass = tuple2_region
 type simpletype = tycon * tyvar list
 let simpletype = tuple2_region
 
+type may_banana_atype = atype * bool
+let may_banana_atype exclam atype =
+  comp2_right_opt atype exclam (fun a -> function
+    | Some _ -> (a, true)
+    | None   -> (a, false))
+
+type fielddecl = fix_later
+
+type constr_arg =
+  | CA_btype  of btype
+  | CA_satype of atype
+
+let ca_btype bt   = TK.with_region (fun a -> CA_btype a) bt
+let ca_satype sat = TK.with_region (fun a -> CA_satype a) sat
+
+type constr = 
+  | CO_con of con * may_banana_atype list
+  | CO_bin of constr_arg * conop * constr_arg
+  | CO_rec of con * fielddecl list
+
+let co_con con atypel = comp2_region con atypel (fun a b -> CO_con (a, b))
+let co_bin a1 conop a2 = comp3_region a1 conop a2 (fun a b c -> CO_bin (a, b, c))
+let co_rec con flddecll = comp2_region con flddecll (fun a b -> CO_rec (a, b))
+
 type 'pat fpat = (qvar * 'pat)
 
 type 'pat apat =

@@ -41,7 +41,7 @@ let ch_type () = parse_chan stdin P.test_type
 let ch_apat () = parse_chan stdin P.test_apat
 
 let ch_decls () = parse_chan_raw stdin P.test_decls
-let ch_decl () = parse_chan_raw stdin P.test_decl
+let ch_constr () = parse_chan_raw stdin P.test_constr
 let ch_decls_cont () = parse_chan_raw stdin P.test_decls_cont
 
 let s1_lambda () = parse_string "\\ (1:xs,'a':ys) -> (xs, ys)" P.test_exp

@@ -38,6 +38,7 @@ let comma = just_tk TK.SP_COMMA
 let semi  = just_tk TK.SP_SEMI
 let eq      = just_tk TK.KS_EQ
 let minus   = just_tk TK.KS_MINUS
+let exclam  = just_tk TK.KS_EXCLAM
 let two_colon = just_tk TK.KS_2_COLON
 let l_arrow = just_tk TK.KS_L_ARROW
 let r_arrow = just_tk TK.KS_R_ARROW
@@ -45,6 +46,7 @@ let l_paren = just_tk TK.SP_LEFT_PAREN
 let r_paren = just_tk TK.SP_RIGHT_PAREN
 
 let opt_semi = ~?semi
+let opt_exclam = ~?exclam
 
 (* 汎用の構成子 *)
 (*   構文構造の並び、挟まれる構造、0以上のリスト、1以上のリスト *)
@@ -322,13 +324,24 @@ let may_be_scontext = ~?(form_append scontext (just_tk TK.KS_R_W_ARROW))
 (* simpletype 	→ 	tycon tyvar1 … tyvark     	(k ≥ 0) *)
 let simpletype = HSY.simpletype *<$> tycon *<*> many' tyvar
 
-(* constrs 	→ 	constr1 | … | constrn     	(n ≥ 1) *)
+(* (btype | ! atype) *)
+let constr_arg = HSY.ca_satype *<$> exclam **|> ~$atype <|> HSY.ca_btype *<$> ~$btype
+
+(* fielddecl 	→ 	vars :: (type | ! atype)      *)
+let fielddecl = p_fix_later
+
 (* constr 	→ 	con [!] atype1 … [!] atypek     	(arity con  =  k, k ≥ 0) *)
 (* 	| 	(btype | ! atype) conop (btype | ! atype)     	(infix conop) *)
 (* 	| 	con { fielddecl1 , … , fielddecln }     	(n ≥ 0) *)
+let constr =
+  HSY.co_con *<$> con *<*> many' (HSY.may_banana_atype *<$> opt_exclam *<*> ~$atype)
+  <|> HSY.co_bin *<$> constr_arg *<*> conop *<*> constr_arg
+    <|> HSY.co_rec *<$> con *<*> separated fielddecl comma
+
+(* constrs 	→ 	constr1 | … | constrn     	(n ≥ 1) *)
+
 (* newconstr 	→ 	con atype      *)
 (* 	| 	con { var :: type }      *)
-(* fielddecl 	→ 	vars :: (type | ! atype)      *)
 (* deriving 	→ 	deriving (dclass | (dclass1, … , dclassn))     	(n ≥ 0) *)
 (* dclass 	→ 	qtycls      *)
  
@@ -661,8 +674,8 @@ let test_apat : (TK.t, HSY.pat HSY.apat * TK.region) parser =
 let test_decls : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
   ~$decls
 
-let test_decl : (TK.t, HSY.infexp HSY.decl * TK.region) parser =
-  ~$decl
+let test_constr : (TK.t, HSY.constr * TK.region) parser =
+  constr
 
 let test_decls_cont : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
   separated ~$decl semi
