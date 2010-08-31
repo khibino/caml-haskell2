@@ -411,10 +411,8 @@ let rec funlhs () =
    --- exp
 *)
 
-let rec dummy_exp_top () = p_fix_later
-
 (* [where decls] *)
-and     opt_where_decls () = ~?(where **> ~$decls)
+let rec opt_where_decls () = ~?(where **> ~$decls)
 
 (* rhs 	→ 	= exp [where decls]      *)
 (* 	| 	gdrhs [where decls]      *)
