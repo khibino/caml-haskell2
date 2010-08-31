@@ -301,14 +301,21 @@ let class_ =
 (* context 	→ 	class      *)
 (* 	| 	( class1 , … , classn )     	(n ≥ 0) *)
 let context =  list_form (Data.cons_nil *<$> class_)
-  <|> parened (separated class_ comma (* class list *) )
+  <|> parened (separated class_ comma)
 
 (* [context =>] *)
 let may_be_context = ~?(form_append context (just_tk TK.KS_R_W_ARROW))
 
+(* simpleclass	→ 	qtycls tyvar      *)
+let simpleclass = HSY.simpleclass *<$> qtycls *<*> tyvar
+
 (* scontext 	→ 	simpleclass      *)
 (* 	| 	( simpleclass1 , … , simpleclassn )     	(n ≥ 0) *)
-(* simpleclass	→ 	qtycls tyvar      *)
+let scontext = list_form (Data.cons_nil *<$> simpleclass)
+  <|> parened (separated simpleclass comma)
+
+(* [scontext =>] *)
+let may_be_scontext = ~?(form_append scontext (just_tk TK.KS_R_W_ARROW))
  
 (* simpletype 	→ 	tycon tyvar1 … tyvark     	(k ≥ 0) *)
 (* constrs 	→ 	constr1 | … | constrn     	(n ≥ 1) *)

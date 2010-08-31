@@ -220,6 +220,9 @@ let class_tapp qtycls tyvar atype_list =
 type context = class_ list
 type may_be_context = context option
 
+type simpleclass = qtycls * tyvar
+let simpleclass = tuple2_region
+
 type 'pat fpat = (qvar * 'pat)
 
 type 'pat apat =
