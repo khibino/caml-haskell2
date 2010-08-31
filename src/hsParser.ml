@@ -32,10 +32,6 @@ let pos_fix_later = pos_dummy
 let region_fix_later = TK.region pos_fix_later pos_fix_later
 let p_fix_later : (TK.t, unit * TK.region) parser = pure ((), region_fix_later)
 
-(* Qualified constructor or module id is ambiguous *)
-let conid = untag_tk (function | TK.T_CONID s -> Some s | _ -> None)
-let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) <|> conid
-
 let let_  = just_tk TK.K_LET
 let where = just_tk TK.K_WHERE
 let comma = just_tk TK.SP_COMMA
@@ -114,6 +110,14 @@ let l1_separated_2 a d = l1_form (Raw.l1_separated_2 a d)
 
 let l1_list_form pl1 = TK.with_region Data.l1_list *<$> l1_form pl1
 
+
+(* conid 		(constructors)      *)
+(* conid は doted_conid から使われている *)
+(* conid is used by doted_conid above *)
+(* Qualified constructor or module id is ambiguous *)
+let conid = untag_tk (function | TK.T_CONID s -> Some s | _ -> None)
+let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) <|> conid
+
 (* 10.2  Lexical Syntax *)
 
 (* literal 	 → 	integer | float | char | string      *)
@@ -142,9 +146,7 @@ let varid = untag_tk (function
   | TK.K_QUALIFIED -> Some HSY.sym_qualified
   | TK.K_HIDING    -> Some HSY.sym_hiding
   | _              -> None)
-(* conid 		(constructors)      *)
-(* conid は doted_conid から使われている ↑ *)
-(* conid is used by doted_conid above *)
+
 (* tyvar 	→ 	varid     	(type variables) *)
 let tyvar = varid
 (* tycon 	→ 	conid     	(type constructors) *)
