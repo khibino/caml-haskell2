@@ -223,6 +223,9 @@ type may_be_context = context option
 type simpleclass = qtycls * tyvar
 let simpleclass = tuple2_region
 
+type simpletype = tycon * tyvar list
+let simpletype = tuple2_region
+
 type 'pat fpat = (qvar * 'pat)
 
 type 'pat apat =

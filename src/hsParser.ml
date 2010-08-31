@@ -81,6 +81,7 @@ module Raw = struct
 
   (* リストとなる構文要素 - 長さ0でも可 - 位置情報付き *)
   let some = Simple.Combinator.some
+  let many = Simple.Combinator.many
 
   let separated a d =
     Data.l1_list *<$> l1_separated a d <|> pure []
@@ -95,6 +96,7 @@ let list_form pl =
   *<$> pl
 
 let some' x = list_form (Raw.some x)
+let many' x = list_form (Raw.many x)
 let separated a d = list_form (Raw.separated a d)
 
 let l1_form pl1 =
@@ -318,6 +320,8 @@ let scontext = list_form (Data.cons_nil *<$> simpleclass)
 let may_be_scontext = ~?(form_append scontext (just_tk TK.KS_R_W_ARROW))
  
 (* simpletype 	→ 	tycon tyvar1 … tyvark     	(k ≥ 0) *)
+let simpletype = HSY.simpletype *<$> tycon *<*> many' tyvar
+
 (* constrs 	→ 	constr1 | … | constrn     	(n ≥ 1) *)
 (* constr 	→ 	con [!] atype1 … [!] atypek     	(arity con  =  k, k ≥ 0) *)
 (* 	| 	(btype | ! atype) conop (btype | ! atype)     	(infix conop) *)
