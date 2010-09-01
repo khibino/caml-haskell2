@@ -370,6 +370,19 @@ let inst =
       <|> bracketed (HSY.in_list *<$> tyvar)
         <|> parened (HSY.in_fun *<$> tyvar *<*> r_arrow **> tyvar)
  
+(* fatype 	→ 	qtycon atype1 … atypek     	(k  ≥  0) *)
+let fatype = HSY.fatype *<$> qtycon *<*> many' ~$atype
+
+(* frtype 	→ 	fatype      *)
+(* 	| 	()      *)
+let frtype = HSY.frt_fa *<$> fatype <|> form_parened (pure HSY.FRT_unit)
+
+(* ftype 	→ 	frtype      *)
+(* 	| 	fatype  →  ftype      *)
+let rec ftype () =
+  HSY.ft_fun *<$> fatype *<*> r_arrow **> ~$ftype
+  <|> HSY.ft_fr *<$> frtype
+ 
 (* fdecl 	→ 	import callconv [safety] impent var :: ftype     	(define varibale) *)
 (* 	| 	export callconv expent var :: ftype     	(expose variable) *)
 (* callconv 	→ 	ccall | stdcall | cplusplus     	(calling convention) *)
@@ -378,12 +391,6 @@ let inst =
 (* impent 	→ 	[string]     	(see Section 8.5.1) *)
 (* expent 	→ 	[string]     	(see Section 8.5.1) *)
 (* safety 	→ 	unsafe | safe      *)
- 
-(* ftype 	→ 	frtype      *)
-(* 	| 	fatype  →  ftype      *)
-(* frtype 	→ 	fatype      *)
-(* 	| 	()      *)
-(* fatype 	→ 	qtycon atype1 … atypek     	(k  ≥  0) *)
  
 
 (* 10.5  Context-Free Syntax

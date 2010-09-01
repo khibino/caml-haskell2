@@ -285,6 +285,21 @@ let in_tuple tyvarl = TK.with_region (fun a -> IN_tuple (Data.l1_list a)) tyvarl
 let in_list  tyvar  = TK.with_region (fun a -> IN_list a) tyvar
 let in_fun   tyvar1 tyvar2 = comp2_region tyvar1 tyvar2 (fun a b -> IN_fun (a, b))
 
+type fatype = qtycon * atype list
+
+let fatype qtycon atypel = comp2_region qtycon atypel Data.tuple2
+
+type frtype = FRT_fa of fatype | FRT_unit
+
+let frt_fa fatype = TK.with_region (fun a -> FRT_fa a) fatype
+
+type ftype =
+  | FT_fr of frtype
+  | FT_fun of fatype * ftype
+
+let ft_fr frtype = TK.with_region (fun a -> FT_fr a) frtype
+let ft_fun fatype ftype = comp2_region fatype ftype (fun a b -> FT_fun (a, b))
+
 type 'pat fpat = (qvar * 'pat)
 
 type 'pat apat =
