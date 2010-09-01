@@ -383,15 +383,19 @@ let rec ftype () =
   HSY.ft_fun *<$> fatype *<*> r_arrow **> ~$ftype
   <|> HSY.ft_fr *<$> frtype
  
-(* fdecl 	→ 	import callconv [safety] impent var :: ftype     	(define varibale) *)
-(* 	| 	export callconv expent var :: ftype     	(expose variable) *)
 (* callconv 	→ 	ccall | stdcall | cplusplus     	(calling convention) *)
 (* 	| 	jvm | dotnet      *)
 (* 	| 	 system-specific calling conventions      *)
+
 (* impent 	→ 	[string]     	(see Section 8.5.1) *)
+
 (* expent 	→ 	[string]     	(see Section 8.5.1) *)
+
 (* safety 	→ 	unsafe | safe      *)
- 
+
+(* fdecl 	→ 	import callconv [safety] impent var :: ftype     	(define varibale) *)
+(* 	| 	export callconv expent var :: ftype     	(expose variable) *)
+
 
 (* 10.5  Context-Free Syntax
    -- expression から参照される要素を先に定義 -- 
