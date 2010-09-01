@@ -363,6 +363,12 @@ let deriving = just_tk TK.K_DERIVING **|> (cons_nil dclass
 (* 	| 	( tyvar1 , … , tyvark )     	(k ≥ 2, tyvars distinct) *)
 (* 	| 	[ tyvar ]      *)
 (* 	| 	( tyvar1 -> tyvar2 )     	tyvar1 and tyvar2 distinct *)
+let inst =
+  HSY.in_tyapp_zero *<$> gtycon
+  <|> parened (HSY.in_tyapp *<$> gtycon *<*> many' tyvar)
+    <|> parened (HSY.in_tuple *<$> l1_separated tyvar comma)
+      <|> bracketed (HSY.in_list *<$> tyvar)
+        <|> parened (HSY.in_fun *<$> tyvar *<*> r_arrow **> tyvar)
  
 (* fdecl 	→ 	import callconv [safety] impent var :: ftype     	(define varibale) *)
 (* 	| 	export callconv expent var :: ftype     	(expose variable) *)
@@ -690,7 +696,7 @@ let test_decls : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
 let test_constrs : (TK.t, HSY.constr Data.l1_list * TK.region) parser =
   constrs
 
-let test_deriving : (TK.t, HSY.qtycls list * TK.region) parser =
+let test_deriving : (TK.t, HSY.deriving * TK.region) parser =
   deriving
 
 let test_decls_cont : (TK.t, HSY.infexp HSY.decls * TK.region) parser =

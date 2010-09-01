@@ -270,6 +270,21 @@ type newconstr =
 let nc_con con atype = comp2_region con atype (fun a b -> NC_con (a, b))
 let nc_rec con var type_ = comp3_region con var type_ (fun a b c -> NC_rec (a, b, c))
 
+type dclass = qtycls
+type deriving = dclass list
+
+type inst =
+  | IN_tyapp of gtycon * tyvar list
+  | IN_tuple of tyvar list
+  | IN_list  of tyvar
+  | IN_fun   of tyvar * tyvar
+
+let in_tyapp_zero gtycon = TK.with_region (fun a -> IN_tyapp (a, [])) gtycon
+let in_tyapp gtycon tyvarl = comp2_region gtycon tyvarl (fun a b -> IN_tyapp (a, b))
+let in_tuple tyvarl = TK.with_region (fun a -> IN_tuple (Data.l1_list a)) tyvarl
+let in_list  tyvar  = TK.with_region (fun a -> IN_list a) tyvar
+let in_fun   tyvar1 tyvar2 = comp2_region tyvar1 tyvar2 (fun a b -> IN_fun (a, b))
+
 type 'pat fpat = (qvar * 'pat)
 
 type 'pat apat =
