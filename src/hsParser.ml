@@ -341,6 +341,7 @@ let constr =
     <|> HSY.co_rec *<$> con *<*> separated fielddecl comma
 
 (* constrs 	→ 	constr1 | … | constrn     	(n ≥ 1) *)
+let constrs = l1_separated constr (just_tk TK.KS_BAR)
 
 (* newconstr 	→ 	con atype      *)
 (* 	| 	con { var :: type }      *)
@@ -676,8 +677,8 @@ let test_apat : (TK.t, HSY.pat HSY.apat * TK.region) parser =
 let test_decls : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
   ~$decls
 
-let test_constr : (TK.t, HSY.constr * TK.region) parser =
-  constr
+let test_constrs : (TK.t, HSY.constr Data.l1_list * TK.region) parser =
+  constrs
 
 let test_decls_cont : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
   separated ~$decl semi
