@@ -44,6 +44,8 @@ let l_arrow = just_tk TK.KS_L_ARROW
 let r_arrow = just_tk TK.KS_R_ARROW
 let l_paren = just_tk TK.SP_LEFT_PAREN
 let r_paren = just_tk TK.SP_RIGHT_PAREN
+let l_brace = just_tk TK.SP_LEFT_BRACE
+let r_brace = just_tk TK.SP_RIGHT_BRACE
 
 let opt_semi = ~?semi
 let opt_exclam = ~?exclam
@@ -62,7 +64,7 @@ let between a b = form_between a b |.| (lift_a fst)
 
 let form_parened    p = form_between l_paren                      r_paren   p
 let form_bracketed  p = form_between (just_tk TK.SP_LEFT_BRACKET) (just_tk TK.SP_RIGHT_BRACKET) p
-let form_braced     p = form_between (just_tk TK.SP_LEFT_BRACE)   (just_tk TK.SP_RIGHT_BRACE)   p
+let form_braced     p = form_between l_brace                      r_brace   p
 let form_backquoted p = form_between (just_tk TK.SP_B_QUOTE)      (just_tk TK.SP_B_QUOTE)       p
 
 let parened    p = form_parened    ((lift_a fst) p)
@@ -345,6 +347,10 @@ let constrs = l1_separated constr (just_tk TK.KS_BAR)
 
 (* newconstr 	→ 	con atype      *)
 (* 	| 	con { var :: type }      *)
+let newconstr =
+  HSY.nc_con *<$> con *<*> ~$atype
+  <|> HSY.nc_rec *<$> con *<*> l_brace **> var *<*> two_colon **> ~$type_ **< r_brace
+
 (* deriving 	→ 	deriving (dclass | (dclass1, … , dclassn))     	(n ≥ 0) *)
 (* dclass 	→ 	qtycls      *)
  

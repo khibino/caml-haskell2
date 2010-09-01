@@ -263,6 +263,13 @@ let co_con con atypel = comp2_region con atypel (fun a b -> CO_con (a, b))
 let co_bin a1 conop a2 = comp3_region a1 conop a2 (fun a b c -> CO_bin (a, b, c))
 let co_rec con flddecll = comp2_region con flddecll (fun a b -> CO_rec (a, b))
 
+type newconstr =
+  | NC_con of con * atype
+  | NC_rec of con * var * type_
+
+let nc_con con atype = comp2_region con atype (fun a b -> NC_con (a, b))
+let nc_rec con var type_ = comp3_region con var type_ (fun a b c -> NC_rec (a, b, c))
+
 type 'pat fpat = (qvar * 'pat)
 
 type 'pat apat =
