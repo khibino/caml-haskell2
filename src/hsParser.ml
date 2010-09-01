@@ -103,6 +103,8 @@ let some' x = list_form (Raw.some x)
 let many' x = list_form (Raw.many x)
 let separated a d = list_form (Raw.separated a d)
 
+let cons_nil x = list_form (Data.cons_nil *<$> x)
+
 let l1_form pl1 =
   (function
     | ((e, reg), []) -> ((e, []), reg)
@@ -115,7 +117,6 @@ let l1_separated a d = l1_form (Raw.l1_separated a d)
 let l1_separated_2 a d = l1_form (Raw.l1_separated_2 a d)
 
 let l1_list_form pl1 = TK.with_region Data.l1_list *<$> l1_form pl1
-
 
 (* conid 		(constructors)      *)
 (* conid は doted_conid から使われている *)
@@ -289,7 +290,6 @@ and     btype () =
 (* 	| 	( type1 , … , typek )     	(tuple type, k ≥ 2) *)
 (* 	| 	[ type ]     	(list type) *)
 (* 	| 	( type )     	(parenthesized constructor) *)
-
 and     atype () =
   HSY.at_gtc *<$> gtycon
   <|> HSY.at_tyvar *<$> tyvar
@@ -306,7 +306,7 @@ let class_ =
 
 (* context 	→ 	class      *)
 (* 	| 	( class1 , … , classn )     	(n ≥ 0) *)
-let context =  list_form (Data.cons_nil *<$> class_)
+let context =  cons_nil class_
   <|> parened (separated class_ comma)
 
 (* [context =>] *)
@@ -317,7 +317,7 @@ let simpleclass = HSY.simpleclass *<$> qtycls *<*> tyvar
 
 (* scontext 	→ 	simpleclass      *)
 (* 	| 	( simpleclass1 , … , simpleclassn )     	(n ≥ 0) *)
-let scontext = list_form (Data.cons_nil *<$> simpleclass)
+let scontext = cons_nil simpleclass
   <|> parened (separated simpleclass comma)
 
 (* [scontext =>] *)
@@ -351,9 +351,13 @@ let newconstr =
   HSY.nc_con *<$> con *<*> ~$atype
   <|> HSY.nc_rec *<$> con *<*> l_brace **> var *<*> two_colon **> ~$type_ **< r_brace
 
-(* deriving 	→ 	deriving (dclass | (dclass1, … , dclassn))     	(n ≥ 0) *)
 (* dclass 	→ 	qtycls      *)
+let dclass = qtycls
  
+(* deriving 	→ 	deriving (dclass | (dclass1, … , dclassn))     	(n ≥ 0) *)
+let deriving = just_tk TK.K_DERIVING **|> (cons_nil dclass
+                                           <|> parened (separated dclass comma))
+
 (* inst 	→ 	gtycon      *)
 (* 	| 	( gtycon tyvar1 … tyvark )     	(k ≥ 0, tyvars distinct) *)
 (* 	| 	( tyvar1 , … , tyvark )     	(k ≥ 2, tyvars distinct) *)
@@ -685,6 +689,9 @@ let test_decls : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
 
 let test_constrs : (TK.t, HSY.constr Data.l1_list * TK.region) parser =
   constrs
+
+let test_deriving : (TK.t, HSY.qtycls list * TK.region) parser =
+  deriving
 
 let test_decls_cont : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
   separated ~$decl semi

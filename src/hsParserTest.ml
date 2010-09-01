@@ -44,12 +44,15 @@ let ch_decls () = parse_chan_raw stdin P.test_decls
 let ch_constrs () = parse_chan_raw stdin P.test_constrs
 let ch_decls_cont () = parse_chan_raw stdin P.test_decls_cont
 
-let s1_lambda () = parse_string "\\ (1:xs,'a':ys) -> (xs, ys)" P.test_exp
-let s1_lcomp  () = parse_string "[(x, y) | x <- [1,2,3], y <- ['a','b'] ]" P.test_exp
-let s1_lbl_upd () = parse_string "x { Foo.a = y, Foo.b = z } { Foo.c = p, Foo.d = q }" P.test_exp
-let s1_do () = parse_string "do { let { x = 1; y = 2}; 1 }" P.test_exp
-let s1_t_class () = parse_string "p :: (Eq (f b), Functor f) => (a -> b) -> f a -> f b -> Bool" P.test_exp
+let s_exp_lambda () = parse_string "\\ (1:xs,'a':ys) -> (xs, ys)" P.test_exp
+let s_exp_lcomp  () = parse_string "[(x, y) | x <- [1,2,3], y <- ['a','b'] ]" P.test_exp
+let s_exp_lbl_upd () = parse_string "x { Foo.a = y, Foo.b = z } { Foo.c = p, Foo.d = q }" P.test_exp
+let s_exp_do () = parse_string "do { let { x = 1; y = 2}; 1 }" P.test_exp
+let s_exp_t_class () = parse_string "p :: (Eq (f b), Functor f) => (a -> b) -> f a -> f b -> Bool" P.test_exp
 
-let s2_t_fun () = parse_string "(Either String a, b -> c)" P.test_type
+let s_type_fun () = parse_string "(Either String a, b -> c)" P.test_type
 
 let s_constrs () = parse_string_raw "Foo !a b !c | Bar" P.test_constrs
+
+let s_deriving_0 () = parse_string_raw "deriving Show" P.test_deriving
+let s_deriving_1 () = parse_string_raw "deriving (Eq, Ord, Num)" P.test_deriving
