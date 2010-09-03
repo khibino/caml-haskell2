@@ -300,6 +300,28 @@ type ftype =
 let ft_fr frtype = TK.with_region (fun a -> FT_fr a) frtype
 let ft_fun fatype ftype = comp2_region fatype ftype (fun a b -> FT_fun (a, b))
 
+type callconv = varid
+type impent = hs_string option
+type expent = hs_string option
+type safety = varid
+
+type fdecl =
+  | FO_import of callconv * safety option * impent * var * ftype
+  | FO_export of callconv * expent * var * ftype
+
+let fo_import callconv safety impent var ftype =
+  TK.form_between callconv
+    (FO_import (fst callconv,
+                Data.with_option fst safety,
+                Data.with_option fst impent,
+                fst var, fst ftype)) ftype
+
+let fo_export callconv expent var ftype =
+  TK.form_between callconv
+    (FO_export (fst callconv,
+                Data.with_option fst expent,
+                fst var, fst ftype)) ftype
+
 type 'pat fpat = (qvar * 'pat)
 
 type 'pat apat =
@@ -376,9 +398,8 @@ type gendecl =
   | GD_fixity of fixity * int * ops
   | GD_empty
 
-let gd_vars vars context type_ = match context with
-  | Some cont -> comp3_region vars cont type_ (fun a b c -> GD_vars (Data.l1_list a, Some b, c))
-  | None      -> comp2_region vars type_      (fun a c -> GD_vars (Data.l1_list a, None, c))
+let gd_vars vars context type_ =
+  comp2_region vars type_ (fun a c -> GD_vars (Data.l1_list a, Data.with_option fst context, c))
 
 let gd_fixity fixity level ops = match level with
   | Some level -> comp3_region fixity level ops (fun a b c -> GD_fixity (a, b, Data.l1_list c))

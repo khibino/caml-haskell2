@@ -34,6 +34,8 @@ let p_fix_later : (TK.t, unit * TK.region) parser = pure ((), region_fix_later)
 
 let let_  = just_tk TK.K_LET
 let where = just_tk TK.K_WHERE
+let tk_import = just_tk TK.K_IMPORT
+let tk_export = just_tk TK.K_EXPORT
 let comma = just_tk TK.SP_COMMA
 let semi  = just_tk TK.SP_SEMI
 let eq      = just_tk TK.KS_EQ
@@ -191,6 +193,7 @@ let qconsym = qual_id_tk (function
   | _ -> None)
   <|> HPST.q_not_qual *<$> consym
 
+let string  = untag_tk (function | TK.L_STRING ca -> Some ca | _ -> None)
 let integer = untag_tk (function | TK.L_INTEGER i -> Some i | _ -> None)
 let float   = untag_tk (function | TK.L_FLOAT f -> Some f | _ -> None)
 
@@ -386,15 +389,37 @@ let rec ftype () =
 (* callconv 	→ 	ccall | stdcall | cplusplus     	(calling convention) *)
 (* 	| 	jvm | dotnet      *)
 (* 	| 	 system-specific calling conventions      *)
+let conv_words = L.map Symbol.intern
+  ["ccall"; "stdcall"; "cplusplus"; "jvm"; "dotnet"]
+
+let safety_words = L.map Symbol.intern
+  ["unsafe";  "safe"]
+
+let unsafe = Symbol.intern
+let safe   = Symbol.intern "safe"
+
+let callconv = untag_tk (function
+  | TK.T_VARID s when L.memq s conv_words -> Some s
+  | _                                     -> None)
 
 (* impent 	→ 	[string]     	(see Section 8.5.1) *)
+let impent = ~?string
 
 (* expent 	→ 	[string]     	(see Section 8.5.1) *)
+let expent = ~?string
 
 (* safety 	→ 	unsafe | safe      *)
+let safety = untag_tk (function
+  | TK.T_VARID s when L.memq s safety_words -> Some s
+  | _                                       -> None)
 
 (* fdecl 	→ 	import callconv [safety] impent var :: ftype     	(define varibale) *)
 (* 	| 	export callconv expent var :: ftype     	(expose variable) *)
+let fdecl =
+  HSY.fo_import *<$> tk_import **|> callconv
+    *<*> ~?safety *<*> impent *<*> var *<*> two_colon **> ~$ftype
+    <|> HSY.fo_export *<$> tk_export **|> callconv
+      *<*> expent *<*> var *<*> two_colon **> ~$ftype
 
 
 (* 10.5  Context-Free Syntax

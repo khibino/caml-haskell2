@@ -364,6 +364,7 @@ let rec lex_haskell context =
   | "deriving" -> tk TK.K_DERIVING
   | "do"       -> tk TK.K_DO
   | "else"     -> tk TK.K_ELSE
+  | "foreign"  -> tk TK.K_FOREIGN
   | "if"       -> tk TK.K_IF
   | "import"   -> tk TK.K_IMPORT
   | "in"       -> tk TK.K_IN
@@ -403,6 +404,7 @@ let rec lex_haskell context =
   | "as"              -> tk TK.K_AS  (** maybe varid *)
   | "qualified"       -> tk TK.K_QUALIFIED  (** maybe varid *)
   | "hiding"          -> tk TK.K_HIDING  (** maybe varid *)
+  | "export"          -> tk TK.K_EXPORT  (** maybe varid *)
   | varid      -> tk (TK.T_VARID (lexsym ()))
   | conid      -> tk (TK.T_CONID (lexsym ()))
   (** identifiers or may be qualified ones *)

@@ -77,6 +77,7 @@ type typ =
   | K_DERIVING
   | K_DO
   | K_ELSE
+  | K_FOREIGN
   | K_IF
   | K_IMPORT
   | K_IN
@@ -106,6 +107,7 @@ type typ =
   | K_AS
   | K_QUALIFIED
   | K_HIDING
+  | K_EXPORT
   | KS_PLUS
   | KS_MINUS
   | KS_EXCLAM
@@ -127,6 +129,7 @@ type typ =
   | L_FLOAT of float
   | WS_WHITE
   | WS_NEWLINE
+
   | BLK_OPEN of int
   | BLK_LEVEL of int
   | EOF
@@ -153,6 +156,7 @@ let to_string = function
   | K_DERIVING -> "deriving"
   | K_DO -> "do"
   | K_ELSE -> "else"
+  | K_FOREIGN -> "foreign"
   | K_IF -> "if"
   | K_IMPORT -> "import"
   | K_IN -> "in"
@@ -182,6 +186,7 @@ let to_string = function
   | K_AS -> "as"
   | K_QUALIFIED -> "qualified"
   | K_HIDING -> "hiding"
+  | K_EXPORT -> "export"
   | KS_PLUS -> "+"
   | KS_MINUS -> "-"
   | KS_EXCLAM -> "!"
