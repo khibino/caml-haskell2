@@ -580,3 +580,20 @@ let case exp altl =
 let do_ stmts = TK.with_region (fun (a, b) -> Do (a, b)) stmts
 let fexp : infexp fexp * TK.region -> infexp lexp * TK.region =
   TK.with_region (fun fexp -> FExp fexp)
+
+type 'infexp cdecl  =
+  | CD_gen of gendecl
+  | CD_val of lhs * 'infexp rhs
+
+type 'infexp cdecls = 'infexp cdecl list
+
+let cd_gen gendecl = TK.with_region (fun a -> CD_gen a) gendecl
+let cd_val lhs rhs = comp2_region lhs rhs (fun a b -> CD_val (a, b))
+
+type 'infexp idecl  =
+  | ID_val of lhs * 'infexp rhs
+  | ID_empty
+
+type 'infexp idecls = 'infexp idecl list
+
+let id_val lhs rhs = comp2_region lhs rhs (fun a b -> ID_val (a, b))

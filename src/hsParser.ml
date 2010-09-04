@@ -659,14 +659,28 @@ and     decl () =
   *<*> ~$rhs
   <|> HSY.d_gen *<$> ~$gendecl (* gendeclにはemptyがあるので後 *)
       
-(* cdecls 	→ 	{ cdecl1 ; … ; cdecln }     	(n ≥ 0) *)
 (* cdecl 	→ 	gendecl      *)
 (* 	| 	(funlhs | var) rhs      *)
+let     cdecl () =
+  HSY.cd_val
+  *<$> (HSY.lhs_fun *<$> ~$funlhs <|> HSY.lhs_pat *<$> ~$pat)
+  *<*> ~$rhs
+  <|> HSY.cd_gen *<$> ~$gendecl (* gendeclにはemptyがあるので後 *)
  
-(* idecls 	→ 	{ idecl1 ; … ; idecln }     	(n ≥ 0) *)
+(* cdecls 	→ 	{ cdecl1 ; … ; cdecln }     	(n ≥ 0) *)
+let cdecls = many' ~$cdecl
+
 (* idecl 	→ 	(funlhs | var) rhs      *)
 (* 	| 	    	(empty) *)
+let     idecl () =
+  HSY.id_val
+  *<$> (HSY.lhs_fun *<$> ~$funlhs <|> HSY.lhs_pat *<$> ~$pat)
+  *<*> ~$rhs
+  <|> pure_with_dummy_region HSY.ID_empty
  
+(* idecls 	→ 	{ idecl1 ; … ; idecln }     	(n ≥ 0) *)
+let idecls = many' ~$idecl
+
 
 (* 10.5  Context-Free Syntax *)
 (* Top level *)
