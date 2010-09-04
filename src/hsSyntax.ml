@@ -597,3 +597,11 @@ type 'infexp idecl  =
 type 'infexp idecls = 'infexp idecl list
 
 let id_val lhs rhs = comp2_region lhs rhs (fun a b -> ID_val (a, b))
+
+type cname =
+  | CN_var of var
+  | CN_con of con
+
+let cn_var var = TK.with_region (fun a -> CN_var a) var
+let cn_con con = TK.with_region (fun a -> CN_con a) con
+

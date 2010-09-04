@@ -685,14 +685,15 @@ let idecls = many' ~$idecl
 (* 10.5  Context-Free Syntax *)
 (* Top level *)
 
+(* cname 	→ 	var | con      *)
+let cname = HSY.cn_var *<$> var <|> HSY.cn_con *<$> con
+ 
 (* export 	→ 	qvar      *)
 (* 	| 	qtycon [(..) | ( cname1 , … , cnamen )]     	(n ≥ 0) *)
 (* 	| 	qtycls [(..) | ( qvar1 , … , qvarn )]     	(n ≥ 0) *)
 (* 	| 	module modid      *)
  
 (* exports 	→ 	( export1 , … , exportn [ , ] )     	(n ≥ 0) *)
- 
-(* cname 	→ 	var | con      *)
  
 (* import 	→ 	var      *)
 (* 	| 	tycon [ (..) | ( cname1 , … , cnamen )]     	(n ≥ 0) *)
