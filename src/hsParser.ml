@@ -685,33 +685,27 @@ let idecls = many' ~$idecl
 (* 10.5  Context-Free Syntax *)
 (* Top level *)
 
-(* module 	 → 	module modid [exports] where body       *)
-(* 	| 	body      *)
-(* body 	→ 	{ impdecls ; topdecls }      *)
-(* 	| 	{ impdecls }      *)
-(* 	| 	{ topdecls }      *)
- 
-(* impdecls 	→ 	impdecl1 ; … ; impdecln     	(n ≥ 1) *)
- 
-(* exports 	→ 	( export1 , … , exportn [ , ] )     	(n ≥ 0) *)
- 
 (* export 	→ 	qvar      *)
 (* 	| 	qtycon [(..) | ( cname1 , … , cnamen )]     	(n ≥ 0) *)
 (* 	| 	qtycls [(..) | ( qvar1 , … , qvarn )]     	(n ≥ 0) *)
 (* 	| 	module modid      *)
  
-(* impdecl 	→ 	import [qualified] modid [as modid] [impspec]      *)
-(* 	| 	    	(empty declaration) *)
+(* exports 	→ 	( export1 , … , exportn [ , ] )     	(n ≥ 0) *)
  
-(* impspec 	→ 	( import1 , … , importn [ , ] )     	(n ≥ 0) *)
-(* 	| 	hiding ( import1 , … , importn [ , ] )     	(n ≥ 0) *)
+(* cname 	→ 	var | con      *)
  
 (* import 	→ 	var      *)
 (* 	| 	tycon [ (..) | ( cname1 , … , cnamen )]     	(n ≥ 0) *)
 (* 	| 	tycls [(..) | ( var1 , … , varn )]     	(n ≥ 0) *)
-(* cname 	→ 	var | con      *)
+
+(* impspec 	→ 	( import1 , … , importn [ , ] )     	(n ≥ 0) *)
+(* 	| 	hiding ( import1 , … , importn [ , ] )     	(n ≥ 0) *)
  
-(* topdecls 	→ 	topdecl1 ; … ; topdecln     	(n ≥ 0) *)
+(* impdecl 	→ 	import [qualified] modid [as modid] [impspec]      *)
+(* 	| 	    	(empty declaration) *)
+ 
+(* impdecls 	→ 	impdecl1 ; … ; impdecln     	(n ≥ 1) *)
+ 
 (* topdecl 	→ 	type simpletype = type      *)
 (* 	| 	data [context =>] simpletype [= constrs] [deriving]      *)
 (* 	| 	newtype [context =>] simpletype = newconstr [deriving]     *)
@@ -721,6 +715,15 @@ let idecls = many' ~$idecl
 (* 	| 	foreign fdecl      *)
 (* 	| 	decl      *)
  
+(* topdecls 	→ 	topdecl1 ; … ; topdecln     	(n ≥ 0) *)
+
+(* body 	→ 	{ impdecls ; topdecls }      *)
+(* 	| 	{ impdecls }      *)
+(* 	| 	{ topdecls }      *)
+ 
+(* module 	 → 	module modid [exports] where body       *)
+(* 	| 	body      *)
+
 
 let drop_any    = pred_tk (fun _ -> true)
 
