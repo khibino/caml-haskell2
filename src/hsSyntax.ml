@@ -82,6 +82,7 @@ let sym_exclam = SYM.intern "!"
 let sym_as        = SYM.intern "as"
 let sym_qualified = SYM.intern "qualified"
 let sym_hiding    = SYM.intern "hiding"
+let sym_export    = SYM.intern "export"
 
 let special_id spc = {
   short = Sp spc;
@@ -605,3 +606,33 @@ type cname =
 let cn_var var = TK.with_region (fun a -> CN_var a) var
 let cn_con con = TK.with_region (fun a -> CN_con a) con
 
+type 'sym ex_flags =
+  | EXF_all
+  | EXF_list of 'sym list
+
+let exf_all dotdot = TK.with_region (fun _ -> EXF_all) dotdot
+let exf_list syms  = TK.with_region (fun a -> EXF_list a) syms
+
+type export =
+  | EX_var of qvar
+  | EX_con of qtycon * cname ex_flags option
+  | EX_cls of qtycls * qvar ex_flags option
+  | EX_mod of modid
+
+type exports = export list
+
+let ex_var var = TK.with_region (fun a -> EX_var a) var
+let ex_con qtycon ex_flags = comp2_right_opt qtycon ex_flags (fun a b -> EX_con (a, b))
+let ex_cls qtycls ex_flags = comp2_right_opt qtycls ex_flags (fun a b -> EX_cls (a, b))
+let ex_mod modid = TK.with_region (fun a -> EX_mod a) modid
+
+type import =
+  | IM_var of var
+  | IM_con of tycon * cname ex_flags option
+  | IM_cls of tycls * var ex_flags option
+
+type imports = import list
+
+let im_var var = TK.with_region (fun a -> IM_var a) var
+let im_con tycon ex_flags = comp2_right_opt tycon ex_flags (fun a b -> IM_con (a, b))
+let im_cls tycls ex_flags = comp2_right_opt tycls ex_flags (fun a b -> IM_cls (a, b))

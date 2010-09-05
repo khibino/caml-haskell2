@@ -36,14 +36,18 @@ let let_  = just_tk TK.K_LET
 let where = just_tk TK.K_WHERE
 let tk_import = just_tk TK.K_IMPORT
 let tk_export = just_tk TK.K_EXPORT
+let hiding = just_tk TK.K_HIDING
 let comma = just_tk TK.SP_COMMA
 let semi  = just_tk TK.SP_SEMI
 let eq      = just_tk TK.KS_EQ
 let minus   = just_tk TK.KS_MINUS
 let exclam  = just_tk TK.KS_EXCLAM
 let two_colon = just_tk TK.KS_2_COLON
+let dotdot  = just_tk TK.KS_DOTDOT
+let bar = just_tk TK.KS_BAR
 let l_arrow = just_tk TK.KS_L_ARROW
 let r_arrow = just_tk TK.KS_R_ARROW
+let r_w_arrow = just_tk TK.KS_R_W_ARROW
 let l_paren = just_tk TK.SP_LEFT_PAREN
 let r_paren = just_tk TK.SP_RIGHT_PAREN
 let l_brace = just_tk TK.SP_LEFT_BRACE
@@ -154,6 +158,7 @@ let varid = untag_tk (function
   | TK.K_AS        -> Some HSY.sym_as
   | TK.K_QUALIFIED -> Some HSY.sym_qualified
   | TK.K_HIDING    -> Some HSY.sym_hiding
+  | TK.K_EXPORT    -> Some HSY.sym_export
   | _              -> None)
 
 (* tyvar 	→ 	varid     	(type variables) *)
@@ -313,7 +318,7 @@ let context =  cons_nil class_
   <|> parened (separated class_ comma)
 
 (* [context =>] *)
-let may_be_context = ~?(form_append context (just_tk TK.KS_R_W_ARROW))
+let may_be_context = ~?(form_append context r_w_arrow)
 
 (* simpleclass	→ 	qtycls tyvar      *)
 let simpleclass = HSY.simpleclass *<$> qtycls *<*> tyvar
@@ -324,7 +329,7 @@ let scontext = cons_nil simpleclass
   <|> parened (separated simpleclass comma)
 
 (* [scontext =>] *)
-let may_be_scontext = ~?(form_append scontext (just_tk TK.KS_R_W_ARROW))
+let may_be_scontext = ~?(form_append scontext r_w_arrow)
  
 (* simpletype 	→ 	tycon tyvar1 … tyvark     	(k ≥ 0) *)
 let simpletype = HSY.simpletype *<$> tycon *<*> many' tyvar
@@ -346,7 +351,7 @@ let constr =
     <|> HSY.co_rec *<$> con *<*> separated fielddecl comma
 
 (* constrs 	→ 	constr1 | … | constrn     	(n ≥ 1) *)
-let constrs = l1_separated constr (just_tk TK.KS_BAR)
+let constrs = l1_separated constr bar
 
 (* newconstr 	→ 	con atype      *)
 (* 	| 	con { var :: type }      *)
@@ -508,7 +513,7 @@ and     gdrhs () = HSY.gdrhs *<$> l1_some (HSY.gdrhs_pair
  
 (* guards 	→ 	| guard1, …, guardn     	(n ≥ 1) *)
 and     guards () =
-  just_tk TK.KS_BAR **> l1_separated ~$guard comma
+  bar **> l1_separated ~$guard comma
   
 (* guard 	→ 	pat <- infixexp     	(pattern guard) *)
 (* 	| 	let decls     	(local declaration) *)
@@ -579,10 +584,10 @@ and     aexp_without_lu () =
     <|> HSY.paren *<$> parened ~$exp
       <|> HSY.tuple *<$> parened ~$comma_expl_2
         <|> HSY.list *<$> bracketed ~$comma_expl_1
-          <|> bracketed (HSY.aseq *<$> ~$exp *<*> ~?(comma **> ~$exp) *<*> just_tk TK.KS_DOTDOT **> ~? ~$exp)
+          <|> bracketed (HSY.aseq *<$> ~$exp *<*> ~?(comma **> ~$exp) *<*> dotdot **> ~? ~$exp)
             <|> bracketed (HSY.comp
                            *<$> ~$exp
-                           *<*> just_tk TK.KS_BAR **|> l1_separated ~$qual comma)
+                           *<*> bar **|> l1_separated ~$qual comma)
               <|> parened (HSY.left_sec *<$> ~$infixexp *<*> qop)
                 <|> parened (HSY.right_sec *<$> ~!minus **> qop *<*> ~$infixexp)
 
@@ -692,21 +697,40 @@ let cname = HSY.cn_var *<$> var <|> HSY.cn_con *<$> con
 (* 	| 	qtycon [(..) | ( cname1 , … , cnamen )]     	(n ≥ 0) *)
 (* 	| 	qtycls [(..) | ( qvar1 , … , qvarn )]     	(n ≥ 0) *)
 (* 	| 	module modid      *)
+let export =
+  HSY.ex_var *<$> qvar
+  <|> HSY.ex_con
+    *<$> qtycon
+    *<*> ~? (parened (HSY.exf_all *<$> dotdot <|> HSY.exf_list *<$> separated cname comma))
+    <|> HSY.ex_cls
+      *<$> qtycls
+      *<*> ~? (parened (HSY.exf_all *<$> dotdot <|> HSY.exf_list *<$> separated qvar comma))
+      <|> HSY.ex_mod *<$> just_tk TK.K_MODULE **|> modid
+
  
 (* exports 	→ 	( export1 , … , exportn [ , ] )     	(n ≥ 0) *)
- 
+let exports = parened (separated export comma **< ~?comma)
+
 (* import 	→ 	var      *)
 (* 	| 	tycon [ (..) | ( cname1 , … , cnamen )]     	(n ≥ 0) *)
 (* 	| 	tycls [(..) | ( var1 , … , varn )]     	(n ≥ 0) *)
+let import =
+  HSY.im_var *<$> var
+  <|> HSY.im_con
+    *<$> tycon
+    *<*> ~?(parened (HSY.exf_all *<$> dotdot <|> HSY.exf_list *<$> separated cname comma))
+    <|> HSY.im_cls
+      *<$> tycls
+      *<*> ~? (parened (HSY.exf_all *<$> dotdot <|> HSY.exf_list *<$> separated var comma))
 
 (* impspec 	→ 	( import1 , … , importn [ , ] )     	(n ≥ 0) *)
 (* 	| 	hiding ( import1 , … , importn [ , ] )     	(n ≥ 0) *)
- 
+
 (* impdecl 	→ 	import [qualified] modid [as modid] [impspec]      *)
 (* 	| 	    	(empty declaration) *)
- 
+
 (* impdecls 	→ 	impdecl1 ; … ; impdecln     	(n ≥ 1) *)
- 
+
 (* topdecl 	→ 	type simpletype = type      *)
 (* 	| 	data [context =>] simpletype [= constrs] [deriving]      *)
 (* 	| 	newtype [context =>] simpletype = newconstr [deriving]     *)
@@ -752,6 +776,15 @@ let test_constrs : (TK.t, HSY.constr Data.l1_list * TK.region) parser =
 
 let test_deriving : (TK.t, HSY.deriving * TK.region) parser =
   deriving
+
+let test_export : (TK.t, HSY.export * TK.region) parser =
+  export
+
+let test_exports : (TK.t, HSY.exports * TK.region) parser =
+  exports
+
+let test_import : (TK.t, HSY.import * TK.region) parser =
+  import
 
 let test_decls_cont : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
   separated ~$decl semi
