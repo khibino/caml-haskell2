@@ -725,6 +725,9 @@ let import =
 
 (* impspec 	→ 	( import1 , … , importn [ , ] )     	(n ≥ 0) *)
 (* 	| 	hiding ( import1 , … , importn [ , ] )     	(n ≥ 0) *)
+let impspec =
+  HSY.is_imp *<$> parened (separated import comma **< comma)
+  <|> HSY.is_hide *<$> hiding **> parened (separated import comma **< comma)
 
 (* impdecl 	→ 	import [qualified] modid [as modid] [impspec]      *)
 (* 	| 	    	(empty declaration) *)
@@ -785,6 +788,9 @@ let test_exports : (TK.t, HSY.exports * TK.region) parser =
 
 let test_import : (TK.t, HSY.import * TK.region) parser =
   import
+
+let test_impspec : (TK.t, HSY.impspec * TK.region) parser =
+  impspec
 
 let test_decls_cont : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
   separated ~$decl semi

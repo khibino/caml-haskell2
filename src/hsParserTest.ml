@@ -42,9 +42,10 @@ let ch_apat () = parse_chan stdin P.test_apat
 
 let ch_decls () = parse_chan_raw stdin P.test_decls
 let ch_constrs () = parse_chan_raw stdin P.test_constrs
-let ch_exports () = parse_chan_raw stdin P.test_exports
 let ch_export () = parse_chan_raw stdin P.test_export
+let ch_exports () = parse_chan_raw stdin P.test_exports
 let ch_import () = parse_chan_raw stdin P.test_import
+let ch_impspec () = parse_chan_raw stdin P.test_impspec
 let ch_decls_cont () = parse_chan_raw stdin P.test_decls_cont
 
 let s_exp_lambda () = parse_string "\\ (1:xs,'a':ys) -> (xs, ys)" P.test_exp
@@ -56,6 +57,9 @@ let s_exp_t_class () = parse_string "p :: (Eq (f b), Functor f) => (a -> b) -> f
 let s_type_fun () = parse_string "(Either String a, b -> c)" P.test_type
 
 let s_constrs () = parse_string_raw "Foo !a b !c | Bar" P.test_constrs
+let s_exports () = parse_string_raw "( foo, Foo(..), Bar, Foo'(foo', bar'), module Bar, )" P.test_exports
+let s_impspec () = parse_string_raw "( foo, Foo(..), Bar, Foo'(foo', bar'), ) " P.test_impspec
+let s_impspec_hide () = parse_string_raw "hiding ( foo, Foo(..), Bar, Foo'(foo', bar'), ) " P.test_impspec
 
 let s_deriving_0 () = parse_string_raw "deriving Show" P.test_deriving
 let s_deriving_1 () = parse_string_raw "deriving (Eq, Ord, Num)" P.test_deriving

@@ -631,8 +631,13 @@ type import =
   | IM_con of tycon * cname ex_flags option
   | IM_cls of tycls * var ex_flags option
 
-type imports = import list
-
 let im_var var = TK.with_region (fun a -> IM_var a) var
 let im_con tycon ex_flags = comp2_right_opt tycon ex_flags (fun a b -> IM_con (a, b))
 let im_cls tycls ex_flags = comp2_right_opt tycls ex_flags (fun a b -> IM_cls (a, b))
+
+type impspec =
+  | IS_imp of import list
+  | IS_hide of import list
+
+let is_imp il = TK.with_region (fun a -> IS_imp a) il
+let is_hide il = TK.with_region (fun a -> IS_hide a) il
