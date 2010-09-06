@@ -60,6 +60,7 @@ let s_constrs () = parse_string_raw "Foo !a b !c | Bar" P.test_constrs
 let s_exports () = parse_string_raw "( foo, Foo(..), Bar, Foo'(foo', bar'), module Bar, )" P.test_exports
 let s_impspec () = parse_string_raw "( foo, Foo(..), Bar, Foo'(foo', bar'), ) " P.test_impspec
 let s_impspec_hide () = parse_string_raw "hiding ( foo, Foo(..), Bar, Foo'(foo', bar'), ) " P.test_impspec
+let s_impdecl () = parse_string_raw "import qualified FooBar as BarFoo ( foo, Foo(..), Bar, Foo'(foo', bar'), ) " P.test_impdecl
 
 let s_deriving_0 () = parse_string_raw "deriving Show" P.test_deriving
 let s_deriving_1 () = parse_string_raw "deriving (Eq, Ord, Num)" P.test_deriving

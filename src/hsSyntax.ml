@@ -641,3 +641,25 @@ type impspec =
 
 let is_imp il = TK.with_region (fun a -> IS_imp a) il
 let is_hide il = TK.with_region (fun a -> IS_hide a) il
+
+type impdecl =
+  | IMD_imp of bool * modid * modid option * impspec option
+  | IMD_empty
+
+let imd_imp qual modid as_modid spec =
+  let (left, qual) =
+    match qual with
+      | Some (_, reg) -> (reg, true)
+      | None          -> (snd modid, false)
+  in
+  let (as_modid, spec, right) =
+    match spec with
+      | Some (spec, reg) -> (Data.with_option fst as_modid, Some spec, reg)
+      | None             ->
+        begin match as_modid with
+          | Some (as_modid, reg) -> (Some as_modid, None, reg)
+          | None                 -> (None, None, snd modid)
+        end
+  in
+  (IMD_imp (qual, fst modid, as_modid, spec),
+   TK.cover_region left right)

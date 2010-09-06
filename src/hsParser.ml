@@ -36,7 +36,6 @@ let let_  = just_tk TK.K_LET
 let where = just_tk TK.K_WHERE
 let tk_import = just_tk TK.K_IMPORT
 let tk_export = just_tk TK.K_EXPORT
-let hiding = just_tk TK.K_HIDING
 let comma = just_tk TK.SP_COMMA
 let semi  = just_tk TK.SP_SEMI
 let eq      = just_tk TK.KS_EQ
@@ -727,12 +726,20 @@ let import =
 (* 	| 	hiding ( import1 , … , importn [ , ] )     	(n ≥ 0) *)
 let impspec =
   HSY.is_imp *<$> parened (separated import comma **< comma)
-  <|> HSY.is_hide *<$> hiding **> parened (separated import comma **< comma)
+  <|> HSY.is_hide *<$> just_tk TK.K_HIDING **> parened (separated import comma **< comma)
 
 (* impdecl 	→ 	import [qualified] modid [as modid] [impspec]      *)
 (* 	| 	    	(empty declaration) *)
+let impdecl =
+  tk_import **|> (HSY.imd_imp
+                  *<$> ~?(just_tk TK.K_QUALIFIED)
+                  *<*> modid
+                  *<*> ~?(just_tk TK.K_AS **|> modid)
+                  *<*> ~?impspec)
+    <|> pure_with_dummy_region HSY.IMD_empty
 
 (* impdecls 	→ 	impdecl1 ; … ; impdecln     	(n ≥ 1) *)
+let impdecls = l1_separated impdecl semi
 
 (* topdecl 	→ 	type simpletype = type      *)
 (* 	| 	data [context =>] simpletype [= constrs] [deriving]      *)
@@ -791,6 +798,9 @@ let test_import : (TK.t, HSY.import * TK.region) parser =
 
 let test_impspec : (TK.t, HSY.impspec * TK.region) parser =
   impspec
+
+let test_impdecl : (TK.t, HSY.impdecl * TK.region) parser =
+  impdecl
 
 let test_decls_cont : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
   separated ~$decl semi
