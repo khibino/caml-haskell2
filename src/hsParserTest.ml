@@ -49,6 +49,7 @@ let ch_impspec () = parse_chan_raw stdin P.test_impspec
 let ch_decls_cont () = parse_chan_raw stdin P.test_decls_cont
 
 let s_exp_lambda () = parse_string "\\ (1:xs,'a':ys) -> (xs, ys)" P.test_exp
+let s_exp_aseq  () = parse_string "[1, 3 .. 11]" P.test_exp
 let s_exp_lcomp  () = parse_string "[(x, y) | x <- [1,2,3], y <- ['a','b'] ]" P.test_exp
 let s_exp_lbl_upd () = parse_string "x { Foo.a = y, Foo.b = z } { Foo.c = p, Foo.d = q }" P.test_exp
 let s_exp_do () = parse_string "do { let { x = 1; y = 2}; 1 }" P.test_exp

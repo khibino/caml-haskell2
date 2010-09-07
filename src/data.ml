@@ -42,3 +42,5 @@ let l1_list : 'a l1_list -> 'a list =
 let l1_rev : 'a l1_list -> 'a l1_list = fun l1 -> match L.rev (l1_list l1) with
   | hd :: tl -> (hd, tl)
   | []       -> failwith "Something wrong? l1_rev failed!"
+
+let apply a b = a b

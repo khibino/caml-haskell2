@@ -153,13 +153,26 @@ let comp3_region a b c cons = TK.form_between a (cons (fst a) (fst b) (fst c)) c
 
 let tuple2_region a b = comp2_region a b Data.tuple2
 
+(*
+let apply_left a b =
+  comp2_region a b (fun a b -> Data.apply b a)
+let apply_right a b =
+  comp2_region a b Data.apply
+*)
+
 let comp2_left_opt  l r cons = match l with
   | Some l -> comp2_region l r (fun a b -> cons (Some a) b)
   | None   -> TK.with_region (fun b -> cons None b) r
 
+let apply_left_opt l r =
+  comp2_left_opt l r (fun a b -> Data.apply b a)
+
 let comp2_right_opt l r cons = match r with
   | Some r -> comp2_region l r (fun a b -> cons a (Some b))
   | None   -> TK.with_region (fun a -> cons a None) l
+
+let apply_right_opt l r =
+  comp2_right_opt l r Data.apply
 
 type fix_later = unit
 
@@ -227,6 +240,9 @@ type may_be_context = context option
 type simpleclass = qtycls * tyvar
 let simpleclass = tuple2_region
 
+type scontext = simpleclass list
+type may_be_scontext = scontext option
+
 type simpletype = tycon * tyvar list
 let simpletype = tuple2_region
 
@@ -263,6 +279,8 @@ type constr =
 let co_con con atypel = comp2_region con atypel (fun a b -> CO_con (a, b))
 let co_bin a1 conop a2 = comp3_region a1 conop a2 (fun a b c -> CO_bin (a, b, c))
 let co_rec con flddecll = comp2_region con flddecll (fun a b -> CO_rec (a, b))
+
+type constrs = constr list
 
 type newconstr =
   | NC_con of con * atype
@@ -547,12 +565,11 @@ let list  = TK.with_region (fun el  -> (List (Data.l1_list el) : infexp aexp))
 
 (* arithmetic sequence はブラケット [ ] の region となるので手抜き  *)
 let aseq _1st _2nd last =
-  TK.form_between
-    _1st
-    (ASeq (fst _1st,
-           Data.with_option fst _2nd,
-           Data.with_option fst last))
-    _1st
+  apply_right_opt
+    (apply_right_opt
+       (TK.with_region (fun a b c -> ASeq (a, b, c)) _1st)
+       _2nd)
+     last
 
 let comp exp ql = comp2_region exp ql (fun a b -> Comp (a, Data.l1_list b))
 let left_sec  infexp qop = comp2_region infexp qop (fun a b -> LeftS (a, b))
@@ -647,19 +664,71 @@ type impdecl =
   | IMD_empty
 
 let imd_imp qual modid as_modid spec =
-  let (left, qual) =
-    match qual with
-      | Some (_, reg) -> (reg, true)
-      | None          -> (snd modid, false)
-  in
-  let (as_modid, spec, right) =
-    match spec with
-      | Some (spec, reg) -> (Data.with_option fst as_modid, Some spec, reg)
-      | None             ->
-        begin match as_modid with
-          | Some (as_modid, reg) -> (Some as_modid, None, reg)
-          | None                 -> (None, None, snd modid)
-        end
-  in
-  (IMD_imp (qual, fst modid, as_modid, spec),
-   TK.cover_region left right)
+  apply_right_opt
+    (apply_right_opt
+       (apply_left_opt
+          qual
+          (TK.with_region
+             (fun a b c d ->
+               IMD_imp ((match b with | Some _ -> true | None -> false),
+                        a, c, d))
+             modid))
+       as_modid)
+    spec
+
+type 'infexp topdecl =
+  | TD_type of simpletype * type_
+  | TD_data of may_be_context * simpletype * constrs option * deriving option
+  | TD_newtype of may_be_context * simpletype * newconstr * deriving option
+  | TD_class of may_be_scontext * tycls * tyvar * 'infexp cdecls option
+  | TD_instance of may_be_scontext * qtycls * inst * 'infexp idecls option
+  | TD_default of type_ list
+  | TD_foreign of fdecl
+  | TD_decl of 'infexp decl
+
+let td_type simpletype type_ =
+  comp2_region simpletype type_ (fun a b -> TD_type (a, b))
+
+let td_data context simpletype constr deriving =
+  apply_right_opt
+    (apply_right_opt
+       (apply_left_opt
+          context
+          (TK.with_region
+             (fun a b c d -> TD_data (b, a, c, d))
+             simpletype))
+       constr)
+    deriving
+
+let td_newtype context simpletype newconstr deriving =
+  apply_right_opt
+    (apply_left_opt
+       context
+       (comp2_region
+          simpletype newconstr
+          (fun a b c d -> TD_newtype (c, a, b, d))))
+    deriving
+
+let td_class context tycls tyvar cdecls =
+  apply_right_opt
+    (apply_left_opt
+       context
+       (comp2_region
+          tycls tyvar
+          (fun a b c d -> TD_class (c, a, b, d))))
+    cdecls
+
+let td_interface context tycls inst idecls =
+  apply_right_opt
+    (apply_left_opt
+       context
+       (comp2_region
+          tycls inst
+          (fun a b c d -> TD_instance (c, a, b, d))))
+    idecls
+
+let td_default tl = TK.with_region (fun a -> TD_default a) tl
+
+let td_foreign fdecl = TK.with_region (fun a -> TD_foreign a) fdecl
+
+let td_decl decl = TK.with_region (fun a -> TD_decl a) decl
