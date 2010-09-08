@@ -738,3 +738,10 @@ let td_foreign fdecl = TK.with_region (fun a -> TD_foreign a) fdecl
 
 let td_decl decl = TK.with_region (fun a -> TD_decl a) decl
 
+type body = impdecls * topdecls
+
+let body impdecls topdecls = comp2_region impdecls topdecls (fun a b -> (Data.l1_list a, b))
+let body_no_top impdecls = TK.with_region (fun a -> (Data.l1_list a, [])) impdecls
+let body_no_imp topdecls = TK.with_region (fun a -> ([], a)) topdecls
+
+(*  *)

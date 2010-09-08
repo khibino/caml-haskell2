@@ -769,10 +769,14 @@ let topdecls = separated topdecl semi
 (* body 	→ 	{ impdecls ; topdecls }      *)
 (* 	| 	{ impdecls }      *)
 (* 	| 	{ topdecls }      *)
+let body =
+  HSY.body *<$> l_brace **|> impdecls *<*> semi **> topdecls **<| r_brace
+    <|> HSY.body_no_top *<$> braced impdecls
+      <|> HSY.body_no_imp *<$> braced topdecls
  
 (* module 	 → 	module modid [exports] where body       *)
 (* 	| 	body      *)
-
+  
 
 let drop_any    = pred_tk (fun _ -> true)
 
