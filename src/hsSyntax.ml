@@ -563,7 +563,6 @@ let paren = TK.with_region (fun exp -> (Paren exp : infexp aexp))
 let tuple = TK.with_region (fun el  -> (Tuple (Data.l1_list el) : infexp aexp))
 let list  = TK.with_region (fun el  -> (List (Data.l1_list el) : infexp aexp))
 
-(* arithmetic sequence はブラケット [ ] の region となるので手抜き  *)
 let aseq _1st _2nd last =
   apply_right_opt
     (apply_right_opt
@@ -663,6 +662,8 @@ type impdecl =
   | IMD_imp of bool * modid * modid option * impspec option
   | IMD_empty
 
+type impdecls = impdecl list
+
 let imd_imp qual modid as_modid spec =
   apply_right_opt
     (apply_right_opt
@@ -676,28 +677,32 @@ let imd_imp qual modid as_modid spec =
        as_modid)
     spec
 
-type 'infexp topdecl =
+type topdecl =
   | TD_type of simpletype * type_
   | TD_data of may_be_context * simpletype * constrs option * deriving option
   | TD_newtype of may_be_context * simpletype * newconstr * deriving option
-  | TD_class of may_be_scontext * tycls * tyvar * 'infexp cdecls option
-  | TD_instance of may_be_scontext * qtycls * inst * 'infexp idecls option
+  | TD_class of may_be_scontext * tycls * tyvar * infexp cdecls option
+  | TD_instance of may_be_scontext * qtycls * inst * infexp idecls option
   | TD_default of type_ list
   | TD_foreign of fdecl
-  | TD_decl of 'infexp decl
+  | TD_decl of infexp decl
+
+type topdecls = topdecl list
 
 let td_type simpletype type_ =
   comp2_region simpletype type_ (fun a b -> TD_type (a, b))
 
-let td_data context simpletype constr deriving =
+let td_data context simpletype constrs deriving =
   apply_right_opt
     (apply_right_opt
        (apply_left_opt
           context
           (TK.with_region
-             (fun a b c d -> TD_data (b, a, c, d))
+             (fun a b c d -> TD_data (b, a,
+                                      Data.with_option Data.l1_list c,
+                                      d))
              simpletype))
-       constr)
+       constrs)
     deriving
 
 let td_newtype context simpletype newconstr deriving =
@@ -718,7 +723,7 @@ let td_class context tycls tyvar cdecls =
           (fun a b c d -> TD_class (c, a, b, d))))
     cdecls
 
-let td_interface context tycls inst idecls =
+let td_instance context tycls inst idecls =
   apply_right_opt
     (apply_left_opt
        context
@@ -732,3 +737,4 @@ let td_default tl = TK.with_region (fun a -> TD_default a) tl
 let td_foreign fdecl = TK.with_region (fun a -> TD_foreign a) fdecl
 
 let td_decl decl = TK.with_region (fun a -> TD_decl a) decl
+

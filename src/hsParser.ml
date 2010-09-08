@@ -749,8 +749,22 @@ let impdecls = l1_separated impdecl semi
 (* 	| 	default (type1 , … , typen)     	(n ≥ 0) *)
 (* 	| 	foreign fdecl      *)
 (* 	| 	decl      *)
- 
+let topdecl =
+  HSY.td_type *<$> just_tk TK.K_TYPE **|> simpletype *<*> eq **> ~$type_
+  <|> just_tk TK.K_DATA **|> (HSY.td_data *<$> may_be_context
+                              *<*> simpletype *<*> ~?(eq **> constrs) *<*> ~?deriving)
+    <|> just_tk TK.K_NEWTYPE **|> (HSY.td_newtype *<$> may_be_context
+                                   *<*> simpletype *<*> eq **> newconstr *<*> ~?deriving)
+      <|> just_tk TK.K_CLASS **|> (HSY.td_class *<$> may_be_scontext
+                                   *<*> tycls *<*> tyvar *<*> ~?(where **> cdecls))
+        <|> just_tk TK.K_INSTANCE **|> (HSY.td_instance *<$> may_be_scontext
+                                        *<*> qtycls *<*> inst *<*> ~?(where **> idecls))
+          <|> HSY.td_default *<$> just_tk TK.K_DEFAULT **|> separated ~$type_ comma
+            <|> HSY.td_foreign *<$> just_tk TK.K_FOREIGN **|> fdecl
+              <|> HSY.td_decl *<$> ~$decl
+
 (* topdecls 	→ 	topdecl1 ; … ; topdecln     	(n ≥ 0) *)
+let topdecls = separated topdecl semi
 
 (* body 	→ 	{ impdecls ; topdecls }      *)
 (* 	| 	{ impdecls }      *)
