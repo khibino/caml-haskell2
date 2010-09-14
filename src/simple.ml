@@ -16,6 +16,14 @@ struct
     | None -> b s
     | v    -> v
 
+  let and_parser m s = match m s with
+    | Some _ -> Some ((), s)
+    | None   -> None
+
+  let not_parser m s = match m s with
+    | None   -> Some ((), s)
+    | Some _ -> None
+
   let satisfy f s =
     let sat_single s =
       match Lazy.force s with

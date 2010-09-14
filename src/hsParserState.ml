@@ -3,6 +3,8 @@ module SYM = Symbol
 module TK  = Token
 module HSY = HsSyntax
 
+let debug = true
+
 let errors : string Queue.t = Queue.create ()
 
 let fail msg =
@@ -12,6 +14,7 @@ let fail msg =
 let theModidStack : SYM.t Stack.t = Stack.create ()
 
 let begin_parse_module modid =
+  if debug then print_endline ("module pushed: " ^ (SYM.name modid)) else ();
   Stack.push modid theModidStack;
   theModidStack
 

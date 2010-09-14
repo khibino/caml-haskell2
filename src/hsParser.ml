@@ -32,10 +32,11 @@ let pos_fix_later = pos_dummy
 let region_fix_later = TK.region pos_fix_later pos_fix_later
 let p_fix_later : (TK.t, unit * TK.region) parser = pure ((), region_fix_later)
 
-let let_  = just_tk TK.K_LET
-let where = just_tk TK.K_WHERE
+let tk_module = just_tk TK.K_MODULE
 let tk_import = just_tk TK.K_IMPORT
 let tk_export = just_tk TK.K_EXPORT
+let let_  = just_tk TK.K_LET
+let where = just_tk TK.K_WHERE
 let comma = just_tk TK.SP_COMMA
 let semi  = just_tk TK.SP_SEMI
 let eq      = just_tk TK.KS_EQ
@@ -625,7 +626,6 @@ and     stmts () =
   HSY.stmts_cons *<$> ~$stmt *<*> ~$stmts
   <|> HSY.stmts_cons_nil *<$> ~$exp **< opt_semi
 
-(* and     stmts () = HSY.do_ *<$> list_form ~$stmt_list *<*> ~$exp *)
 (* stmt 	→ 	exp ;      *)
 (* 	| 	pat <- exp ;      *)
 (* 	| 	let decls ;      *)
@@ -648,12 +648,18 @@ and     fbind () = HSY.fbind *<$> qvar *<*> eq **> ~$exp
 and     gendecl () =
   HSY.gd_vars *<$> vars *<*> two_colon **> may_be_context *<*> ~$type_
   <|> HSY.gd_fixity *<$> fixity *<*> ~?fixity_int *<*> ops
-    <|> pure_with_dummy_region HSY.GD_empty
+    <|> pure_with_dummy_region HSY.GD_empty **< ~&(semi <|> r_brace)
 
 (* Decls *)
 
 (* decls 	→ 	{ decl1 ; … ; decln }     	(n ≥ 0) *)
-and     decls () = braced (separated ~$decl semi)
+(***
+    gendecl の (empty declaration) 対策
+    against (empty declaration) of gendecl
+    decl の後にあるのは semi か r_brace
+    decl is followed by semi or r_brace
+***)
+and     decls () = braced (separated ~$decl semi) 
 
 (* decl 	→ 	gendecl      *)
 (* 	| 	(funlhs | pat) rhs      *)
@@ -662,7 +668,7 @@ and     decl () =
   *<$> (HSY.lhs_fun *<$> ~$funlhs <|> HSY.lhs_pat *<$> ~$pat)
   *<*> ~$rhs
   <|> HSY.d_gen *<$> ~$gendecl (* gendeclにはemptyがあるので後 *)
-      
+
 (* cdecl 	→ 	gendecl      *)
 (* 	| 	(funlhs | var) rhs      *)
 let     cdecl () =
@@ -670,9 +676,15 @@ let     cdecl () =
   *<$> (HSY.lhs_fun *<$> ~$funlhs <|> HSY.lhs_pat *<$> ~$pat)
   *<*> ~$rhs
   <|> HSY.cd_gen *<$> ~$gendecl (* gendeclにはemptyがあるので後 *)
- 
+
 (* cdecls 	→ 	{ cdecl1 ; … ; cdecln }     	(n ≥ 0) *)
-let cdecls = many' ~$cdecl
+(***
+    gendecl の (empty declaration) 対策
+    against (empty declaration) of gendecl
+    cdecl の後にあるのは semi か r_brace
+    cdecl is followed by semi or r_brace
+***)
+let cdecls = braced (separated ~$cdecl semi)
 
 (* idecl 	→ 	(funlhs | var) rhs      *)
 (* 	| 	    	(empty) *)
@@ -683,7 +695,7 @@ let     idecl () =
   <|> pure_with_dummy_region HSY.ID_empty
  
 (* idecls 	→ 	{ idecl1 ; … ; idecln }     	(n ≥ 0) *)
-let idecls = many' ~$idecl
+let idecls = braced (separated ~$idecl semi)
 
 
 (* 10.5  Context-Free Syntax *)
@@ -704,7 +716,7 @@ let export =
     <|> HSY.ex_cls
       *<$> qtycls
       *<*> ~? (parened (HSY.exf_all *<$> dotdot <|> HSY.exf_list *<$> separated qvar comma))
-      <|> HSY.ex_mod *<$> just_tk TK.K_MODULE **|> modid
+      <|> HSY.ex_mod *<$> tk_module **|> modid
 
  
 (* exports 	→ 	( export1 , … , exportn [ , ] )     	(n ≥ 0) *)
@@ -736,7 +748,7 @@ let impdecl =
                   *<*> modid
                   *<*> ~?(just_tk TK.K_AS **|> modid)
                   *<*> ~?impspec)
-    <|> pure_with_dummy_region HSY.IMD_empty
+    <|> pure_with_dummy_region HSY.IMD_empty **< ~&(semi <|> r_brace)
 
 (* impdecls 	→ 	impdecl1 ; … ; impdecln     	(n ≥ 1) *)
 let impdecls = l1_separated impdecl semi
@@ -764,19 +776,35 @@ let topdecl =
               <|> HSY.td_decl *<$> ~$decl
 
 (* topdecls 	→ 	topdecl1 ; … ; topdecln     	(n ≥ 0) *)
+(***
+    gendecl の (empty declaration) 対策
+    against (empty declaration) of gendecl
+    topdecl の後にあるのは semi か r_brace
+    topdecl is followed by semi or r_brace
+***)
 let topdecls = separated topdecl semi
 
 (* body 	→ 	{ impdecls ; topdecls }      *)
 (* 	| 	{ impdecls }      *)
 (* 	| 	{ topdecls }      *)
+(***
+    gendecl の (empty declaration) 対策
+    against (empty declaration) of gendecl
+    topdecls の後にあるのは semi か r_brace
+    topdecls is followed by semi or r_brace
+***)
 let body =
-  HSY.body *<$> l_brace **|> impdecls *<*> semi **> topdecls **<| r_brace
-    <|> HSY.body_no_top *<$> braced impdecls
-      <|> HSY.body_no_imp *<$> braced topdecls
- 
+  braced (HSY.body *<$> impdecls *<*> semi **> topdecls
+          <|> HSY.body_no_top *<$> impdecls
+            <|> HSY.body_no_imp *<$> topdecls)
+
 (* module 	 → 	module modid [exports] where body       *)
 (* 	| 	body      *)
-  
+let module_ =
+  HSY.module_ HPST.begin_parse_module
+  *<$> tk_module **|> modid *<*> ~?exports *<*> where **> body
+    <|> HSY.module_main HPST.begin_parse_module *<$> body
+
 
 let drop_any    = pred_tk (fun _ -> true)
 
@@ -784,41 +812,39 @@ let test_id = drop_any *>
   some (qvar <|> gconsym <|> qconop <|> qvarop)
 
 (*  *)
+let test_decl : (TK.t, HSY.infexp HSY.decl * TK.region) parser =
+  ~$decl
+
+let test_rhs : (TK.t, HSY.infexp HSY.rhs * TK.region) parser =
+  ~$rhs
+
 let test_exp : (TK.t, HSY.infexp HSY.exp * TK.region) parser =
-  (fst *<$> drop_any) **> ~$exp
+  ~$exp
 
 let test_lexp : (TK.t, HSY.infexp HSY.lexp * TK.region) parser =
-  (fst *<$> drop_any) **> ~$lexp
+  ~$lexp
 
 let test_type : (TK.t, HSY.type_ * TK.region) parser =
-  (fst *<$> drop_any) **> ~$type_
+  ~$type_
 
 let test_apat : (TK.t, HSY.pat HSY.apat * TK.region) parser =
-  (fst *<$> drop_any) **> ~$apat
+  ~$apat
 
 let test_decls : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
   ~$decls
 
-let test_constrs : (TK.t, HSY.constr Data.l1_list * TK.region) parser =
-  constrs
+let test_impdecls_semi = impdecls **< semi
 
-let test_deriving : (TK.t, HSY.deriving * TK.region) parser =
-  deriving
+let test_imptop =
+  HSY.body *<$> impdecls *<*> semi **> topdecls
+  <|> HSY.body_no_top *<$> impdecls
+    <|> HSY.body_no_imp *<$> topdecls
 
-let test_export : (TK.t, HSY.export * TK.region) parser =
-  export
+let test_lbr_imptop =
+  l_brace **> test_imptop
 
-let test_exports : (TK.t, HSY.exports * TK.region) parser =
-  exports
-
-let test_import : (TK.t, HSY.import * TK.region) parser =
-  import
-
-let test_impspec : (TK.t, HSY.impspec * TK.region) parser =
-  impspec
-
-let test_impdecl : (TK.t, HSY.impdecl * TK.region) parser =
-  impdecl
+let test_lbr_imptop_rbr =
+  test_lbr_imptop **< r_brace
 
 let test_decls_cont : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
   separated ~$decl semi

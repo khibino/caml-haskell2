@@ -72,7 +72,12 @@ let unqual_id (m, n) = {
   qual  = Unq m;
 }
 
-let sym_prelude = SYM.intern "Prelude"
+let modid_prelude = SYM.intern "Prelude"
+let modid_main    = SYM.intern "Main"
+
+let varid_main    = SYM.intern "main"
+
+let qvarid_main   = unqual_id (modid_main, varid_main)
 
 let sym_nul    = SYM.intern ""
 let sym_plus   = SYM.intern "+"
@@ -86,7 +91,7 @@ let sym_export    = SYM.intern "export"
 
 let special_id spc = {
   short = Sp spc;
-  qual  = Unq sym_prelude;
+  qual  = Unq modid_prelude;
 }
 
 let id_colon = special_id Colon
@@ -743,5 +748,33 @@ type body = impdecls * topdecls
 let body impdecls topdecls = comp2_region impdecls topdecls (fun a b -> (Data.l1_list a, b))
 let body_no_top impdecls = TK.with_region (fun a -> (Data.l1_list a, [])) impdecls
 let body_no_imp topdecls = TK.with_region (fun a -> ([], a)) topdecls
+
+type may_be_exports =
+  | EXS_all
+  | EXS_list of exports
+
+type module_ = modid * (may_be_exports * body)
+
+let module_ register_module modid =
+  let _ = register_module (fst modid) in
+  fun exports body ->
+    comp2_region
+      modid
+      (apply_left_opt
+         exports
+         (TK.with_region
+            (fun a b c -> (c,
+                           ((match b with
+                             | Some ex -> EXS_list ex
+                             | None    -> EXS_all),
+                            a)))
+            body))
+      (fun a b -> Data.apply b a)
+
+let module_main register_module =
+  let modid = modid_main in
+  let _ = register_module modid in
+  fun body ->
+    TK.with_region (fun a -> (modid, (EXS_list [EX_var qvarid_main], a))) body
 
 (*  *)
