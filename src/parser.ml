@@ -9,7 +9,8 @@ sig
 
   val bind    : ('tk, 'e0) parser -> ('e0 -> ('tk, 'e1) parser) -> ('tk, 'e1) parser
   val return  : 'e -> ('tk, 'e) parser
-  val fail    : ('tk, 'e) parser
+  val mzero    : ('tk, 'e) parser
+  val any      : ('tk, 'tk) parser
   val mplus   : ('tk, 'e) parser -> ('tk, 'e) parser -> ('tk, 'e) parser
   val and_parser : ('tk, 'e) parser -> ('tk, unit) parser
   val not_parser : ('tk, 'e) parser -> ('tk, unit) parser
@@ -45,7 +46,8 @@ struct
   let bind    a b = lazy (EOp.bind (force a) (fun x -> force (b x)))
   let return  a   = lazy (EOp.return a)
 
-  let fail        = lazy EOp.fail
+  let mzero        = lazy EOp.mzero
+  let any          = lazy EOp.any
   let mplus   a b = lazy (EOp.mplus (force a) (force b))
   let and_parser a = lazy (EOp.and_parser (force a))
   let not_parser a = lazy (EOp.not_parser (force a))
@@ -67,7 +69,7 @@ sig
 
   val bind    : ('tk, 'e0) parser -> ('e0 -> ('tk, 'e1) parser) -> ('tk, 'e1) parser
   val return  : 'e -> ('tk, 'e) parser
-  val fail    : ('tk, 'e) parser
+  val mzero    : ('tk, 'e) parser
   val mplus   : ('tk, 'e) parser -> ('tk, 'e) parser -> ('tk, 'e) parser
   val satisfy : ('tk -> bool) -> ('tk, 'tk) parser
 
@@ -132,7 +134,7 @@ struct
 
   let bind   = LOp.bind
   let return = LOp.return
-  let fail   = LOp.fail
+  let mzero   = LOp.mzero
   let mplus  = LOp.mplus 
   let satisfy = LOp.satisfy
 

@@ -2,6 +2,11 @@
 module Driver =
 struct
 
+  type 'tk tk_result =
+    | Good of 'tk
+    | Bad  of 'tk
+    | Eos
+
   type 'tk tklist = 'tk LazyList.forest_t
   type ('tk, 'e) parser = 'tk tklist -> ('e * 'tk tklist) option
   type 'e result = 'e option
@@ -10,7 +15,7 @@ struct
 
   let return e = fun tkl -> Some (e, tkl)
 
-  let fail = fun _ -> None
+  let mzero = fun _ -> None
 
   let mplus a b s = match a s with
     | None -> b s
@@ -24,20 +29,17 @@ struct
     | None   -> Some ((), s)
     | Some _ -> None
 
-  let satisfy f s =
-    let sat_single s =
-      match Lazy.force s with
-        | LazyList.Node (i, tl) when f i -> Some (i, tl)
-        | _                              -> None
+  let satisfy pred s =
+    let sat_single br =
+      let LazyList.Node ((i, _) as node) = Lazy.force br in
+      if pred i then (Some node)
+      else           (None     )
     in
-    match s with
-      | []              -> None
-      | fst :: []       -> sat_single fst
-      | fst :: snd :: _ ->
-        (match sat_single fst with
-          | (Some _ as v) -> v
-          | None          -> sat_single snd
-        )
+    List.fold_left (fun res br -> match res with
+      | None   -> sat_single br
+      | Some _ -> res) None s
+
+  let any s = satisfy (fun _ -> true) s
 
   let tokens tkg = [LazyList.t_unfold () (fun () -> (tkg (), [()]))]
 

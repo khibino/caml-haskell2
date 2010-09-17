@@ -77,7 +77,7 @@ let lazy_L : 'a t -> 'a forest_t =
             ->           [lazy (rec_cons tk ts ms)]
 
       | (lazy (Node ((TK.EOF, reg), [])),              [])
-        ->               []
+        ->               [Lazy.lazy_from_val (Node ((TK.EOF, reg), []))]
 
       | (lazy (Node ((TK.EOF, reg), ts)),              m :: ms)
         -> if m == 0 then failwith "parse error. - layout - Note 6"
@@ -93,3 +93,5 @@ let lazy_L : 'a t -> 'a forest_t =
   (fun lz -> match lazy_L ([tree_of_lzlist lz], []) with
     | [_] as out -> out
     | _     -> failwith "parse error. - layout - Wrong input token list." )
+
+let show_out lzl = show_token_forest TK.to_string lzl

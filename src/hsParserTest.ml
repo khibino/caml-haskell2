@@ -8,7 +8,9 @@ let do_parse lzl raw seq_parser =
   run
     seq_parser
     (if raw then [LazyList.tree_of_lzlist lzl]
-     else (LO.lazy_L (LO.input_of_L lzl)))
+     else let lzl = LO.lazy_L (LO.input_of_L lzl) in
+          let _ = LO.show_out lzl in
+          lzl)
 
 let parse_as_main lzl raw seq_parser =
   let _ = HsParserState.begin_parse_module
@@ -138,6 +140,13 @@ let s_body21 () = s_body "{ import Foo0 ; import Foo1 ; foo 0 0 = 1 }"
 let s_body12 () = s_body "{ import Foo0 ; foo 0 0 = 1 ; bar 1 1 = 2 }"
 
 let s_body6 () = s_body "{ foo 0 0 = 1 ; foo x = \\ y -> x + y ; main = print (foo 0 0) }"
+
+let s_module_raw s = parse_str_raw_as_main s P.module_
+let s_module s = parse_str_as_main false s P.module_
+
+let s_module0 () = s_module ""
+let s_module1 () = s_module "foo 0 0 = 1\n"
+let s_module2 () = s_module "foo 0 0 = 1\nfoo x = \\ y -> x + y\n"
 
 let file hs =
   do_parse

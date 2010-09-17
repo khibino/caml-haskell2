@@ -54,11 +54,9 @@ let empty_p x = (x = empty)
 
 let t_run =  Lazy.force
 
-let t_childs t = match t_run t with
-  | Node n -> n
+let t_childs t = let Node n = t_run t in n
 
-let t_peek t = match t_run t with
-  | Node (e, _) -> e
+let t_peek t = let Node (e, _) = t_run t in e
 
 let rec f_nth l i =
   match l with
@@ -96,16 +94,20 @@ let tree_of_lzlist l =
       | Some (car, cdr)      -> (car, [cdr])
     )
 
-let show_token_tree to_string =
-  let rec show_token_tree il t =
-    let indent =
-      Format.sprintf "%2d>" il ^ String.make il ' '
-    in
-    match t_childs t with
-      | ((tk, _), chldl) ->
-        let () = print_endline (indent ^ (to_string tk)) in
-        List.iter (show_token_tree (il + 2)) chldl
-  in show_token_tree 0
+let (show_token_tree, show_token_forest) =
+  let make_show to_string =
+    let rec show_tree il t =
+      let indent =
+        Format.sprintf "%2d>" il ^ String.make il ' '
+      in
+      let ((tk, _), chldl) = t_childs t in
+      let () = print_endline (indent ^ (to_string tk)) in
+      show_forest il chldl
+    and show_forest il f =
+      List.iter (show_tree (il + 2)) f
+    in (show_tree 0, show_forest 0)
+  in ((fun tos -> fst (make_show tos)),
+      (fun tos -> snd (make_show tos)))
 
 type 'a e_tree_t =
   | ENode of ('a * 'a e_tree_t list)
