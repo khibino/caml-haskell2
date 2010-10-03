@@ -88,14 +88,6 @@ struct
 
   let (++) = ZL.(++)
 
-(*
-  let with_apply
-      : (('e0 * 'tk tklist) option -> ('tk, 'e1) result -> ('tk, 'e1) result)
-      -> ('tk, 'e0) parser -> 'tk tklist -> ('tk, 'e1) result =
-    fun f ma tkl ->
-      ZL.foldr f ZL.mzero (ma tkl)
-*)
-
   let bind
       : ('tk, 'e0) parser -> ('e0 -> ('tk, 'e1) parser) ->
         ('tk, 'e1) parser =
@@ -103,15 +95,6 @@ struct
       match ma tfo with
         | None -> None
         | Some (a, tfo) -> f a tfo
-
-(*
-      with_apply
-        (fun a rl ->
-          (match a with
-            | None -> ZL.nil
-            | Some (a, tkl) -> f a tkl) ++ rl)
-        ma tkl
-*)
 
   let (>>=) = bind
 
@@ -152,6 +135,16 @@ struct
         | Some (lazy (ZL.Node (tk, _ as node))) when pred tk
             -> Some node
         | None | Some _ -> None
+
+  (* マッチしなかったときに次の枝をマッチする parser に変換 *)
+  let match_or_shift : ('tk, 'tk) parser -> ('tk, 'tk) parser =
+    fun ma tfo ->
+      match ma tfo with
+        | None ->
+          (match ZL.next tfo with
+            | Some (_, tfo) -> ma tfo
+            | None          -> None)
+        | v    -> v
 
   let tokens tkg =
     ZL.return (ZL.t_unfold

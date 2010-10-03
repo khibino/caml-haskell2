@@ -53,6 +53,8 @@ let r_paren = just_tk TK.SP_RIGHT_PAREN
 let l_brace = just_tk TK.SP_LEFT_BRACE
 let r_brace = just_tk TK.SP_RIGHT_BRACE
 
+let match_or_shift_rb = match_or_shift r_brace
+
 let opt_semi = ~?semi
 let opt_exclam = ~?exclam
 

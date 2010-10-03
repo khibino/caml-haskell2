@@ -15,6 +15,7 @@ sig
   val and_parser : ('tk, 'e) parser -> ('tk, unit) parser
   val not_parser : ('tk, 'e) parser -> ('tk, unit) parser
   val satisfy : string -> ('tk -> bool) -> ('tk, 'tk) parser
+  val match_or_shift : ('tk, 'tk) parser -> ('tk, 'tk) parser
 
   val tokens  :  (unit -> 'a) -> ('a) tklist
 
@@ -44,7 +45,7 @@ struct
   let force = Lazy.force
 
   let bind    a b = lazy (EOp.bind (force a) (fun x -> force (b x)))
-  let return  a   = lazy (EOp.return a)
+  let return  a'  = lazy (EOp.return a')
 
   let mzero        = lazy EOp.mzero
   let any          = lazy EOp.any
@@ -52,6 +53,7 @@ struct
   let and_parser a = lazy (EOp.and_parser (force a))
   let not_parser a = lazy (EOp.not_parser (force a))
   let satisfy name p = lazy (EOp.satisfy name p)
+  let match_or_shift a = lazy (EOp.match_or_shift (force a))
 
   let tokens = EOp.tokens
 
@@ -71,8 +73,9 @@ sig
   val return  : 'e -> ('tk, 'e) parser
   val mzero   : ('tk, 'e) parser
   val mplus   : ('tk, 'e) parser -> ('tk, 'e) parser -> ('tk, 'e) parser
-  val satisfy : string -> ('tk -> bool) -> ('tk, 'tk) parser
   val any     : ('tk, 'tk) parser
+  val satisfy : string -> ('tk -> bool) -> ('tk, 'tk) parser
+  val match_or_shift : ('tk, 'tk) parser -> ('tk, 'tk) parser
 
   val (>>=)  : ('tk, 'e0) parser -> ('e0 -> ('tk, 'e1) parser) -> ('tk, 'e1) parser
   val (>>)   : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e1) parser
@@ -137,8 +140,9 @@ struct
   let return = LOp.return
   let mzero   = LOp.mzero
   let mplus  = LOp.mplus 
-  let satisfy = LOp.satisfy
   let any    = LOp.any
+  let satisfy = LOp.satisfy
+  let match_or_shift = LOp.match_or_shift
 
   let (>>=)  = bind
   let (>>)   = fun m k -> m >>= (fun _ -> k)
