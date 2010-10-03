@@ -1,5 +1,6 @@
 (*  *)
 
+module Z = Lazy
 
 (* lazy list like ocaml batteries *)
 type 'a cons_t =
@@ -7,13 +8,17 @@ type 'a cons_t =
   | Cons of ('a * 'a t)
 and 'a t = ('a cons_t) Lazy.t
 
-let nil    = Lazy.lazy_from_val Nil
+let nil    = Z.lazy_from_val Nil
+
+let mzero = nil
 
 let null_p x = (x = nil)
 
-let run = Lazy.force
+let run : 'a t -> 'a cons_t = Z.force
 
-let cons car cdr = Lazy.lazy_from_val (Cons(car, cdr))
+let cons car cdr = Z.lazy_from_val (Cons(car, cdr))
+
+let return car = cons car nil
 
 let (^:) = cons
 
@@ -31,6 +36,39 @@ let unfold (seed:'b) (gen: 'b -> ('a * 'b) option) =
     | None         -> Nil
   in lazy (step seed)
 
+let rec (++) : 'a t -> 'a t -> 'a t = fun xs ys -> match run xs with
+  | Nil          -> ys
+  | Cons (x, xs) -> lazy (Cons (x, (xs ++ ys)))
+
+let foldr
+    : ('a -> 'b -> 'b)
+    -> 'b -> 'a t -> 'b =
+  fun k z xs ->
+    let lzk = fun za zb -> lazy (k (Z.force za) (Z.force zb)) in
+    let rec go = fun xs -> match run xs with
+        | Nil          -> Z.lazy_from_val z
+        | Cons (x, xs) -> lzk (Z.lazy_from_val x) (go xs)
+    in Z.force (go xs)
+
+let foldl'
+    : ('a -> 'b -> 'a)
+    -> 'a -> 'b t -> 'a =
+  fun f z0 xs0 ->
+    let rec lgo =
+      fun z xs -> match run xs with
+        | Nil -> z
+        | Cons (x, xs) -> lgo (f z x) xs
+    in lgo z0 xs0
+
+let rec map : ('a -> 'b) -> 'a t -> 'b t = fun f l -> match run l with
+    | Nil          -> nil
+    | Cons (x, xs) -> lazy (Cons (f x, map f xs))
+
+let rec iter : ('a -> unit) -> ('a t) -> unit =
+  fun f l -> match run l with
+    | Nil          -> ()
+    | Cons (x, xs) -> let () = f x in iter f xs
+
 let rec to_list lz =
   match next lz with
     | Some (car, cdr) -> car :: to_list cdr
@@ -43,21 +81,24 @@ let of_list l =
 
 
 type 'a node_t =
-  | Node of ('a * 'a tree_t list)
+  | Node of ('a * 'a forest_t)
 and  'a tree_t = ('a node_t) Lazy.t
 
-type 'a forest_t = 'a tree_t list
+and 'a forest_t = ('a tree_t) t
 
-let empty = []
+let empty = Nil
 
 let empty_p x = (x = empty)
 
-let t_run =  Lazy.force
+let t_run =  Z.force
 
 let t_childs t = let Node n = t_run t in n
 
 let t_peek t = let Node (e, _) = t_run t in e
 
+let t_cons  e chld = Z.lazy_from_val (Node (e, chld))
+
+(*
 let rec f_nth l i =
   match l with
     | []                   -> None
@@ -65,34 +106,40 @@ let rec f_nth l i =
     | car :: _ when i == 0 -> Some car
     | _                    -> None
 
-let t_cons  e chld = Lazy.lazy_from_val (Node (e, chld))
-
 let t_next t alti =
   let (e, cs) = t_childs t in
   (e, f_nth cs alti)
 
 let t_next_0 t = t_next t 0
 let t_next_1 t = t_next t 1
+*)
 
+let rec f_unfold : 'b -> ('b -> ('a * 'b) t) -> 'a forest_t =
+  fun seed gen ->
+    let rec step stat =
+      map
+        (fun (pare, stat) -> lazy (Node (pare, step stat)))
+        (gen stat)
+    in step seed
+      
 
-let f_unfold (seed:'b) (gen: 'b -> ('a * 'b) list) =
-  let rec step stat = 
-    List.map (fun (pare, seed) -> lazy (Node (pare, step seed))) (gen stat)
-  in step seed
-
-let t_unfold (seed:'b) (gen: 'b -> ('a * 'b list)) =
-  let rec step stat =
-    let (e, ss) = gen stat in
-    lazy (Node (e, List.map (fun seed -> step seed) ss))
-  in step seed
+let t_unfold : 'b -> ('b -> ('a * 'b t)) -> 'a tree_t =
+  fun seed gen ->
+    let rec step stat =
+      lazy (let (e, ss) = gen stat in
+            Node (e, map (fun seed -> step seed) ss))
+    in step seed
 
 let tree_of_lzlist l =
   t_unfold l
     (fun l -> match next l with
       | None                 -> failwith "null list can't convert tree!"
-      | Some (car, lazy Nil) -> (car, [])
-      | Some (car, cdr)      -> (car, [cdr])
+      | Some (car, lazy Nil) -> (car, nil)
+      | Some (car, cdr)      -> (car, cons cdr nil)
     )
+
+let rec tmap f (lazy (Node (n, chld))) =
+  lazy (Node (f n, (map (tmap f) chld)))
 
 let (show_token_tree, show_token_forest) =
   let make_show to_string =
@@ -104,7 +151,7 @@ let (show_token_tree, show_token_forest) =
       let () = print_endline (indent ^ (to_string tk)) in
       show_forest il chldl
     and show_forest il f =
-      List.iter (show_tree (il + 2)) f
+      iter (show_tree (il + 2)) f
     in (show_tree 0, show_forest 0)
   in ((fun tos -> fst (make_show tos)),
       (fun tos -> snd (make_show tos)))
@@ -114,4 +161,8 @@ type 'a e_tree_t =
 
 let rec tree_to_eager t =
   match t_childs t with
-    | (e, chldl) -> ENode (e, List.map tree_to_eager chldl)
+    | (e, chldl) -> ENode (e, to_list (map tree_to_eager chldl))
+
+(*
+ * end of lazyList.ml
+ *)

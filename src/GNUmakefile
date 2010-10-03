@@ -14,7 +14,7 @@ extra_archives = lablgtk ulexing
 
 include ocaml_basic.gmk
 
-all: scratch.cma hsParserTestMain_b
+all: scratch.cma hpt
 
 rebuild: clean all
 
@@ -46,6 +46,9 @@ scratch.cma: $(objs)
 
 hsParserTestMain_b: scratch.cma hsParserTestMain.cmo
 	$(BYTE_LINK.ml) -o $@ $(byte_archives) $^
+
+hpt: hsParserTestMain_b
+	cp $< $@
 
 info:
 	$(ocamldep) $(sources)

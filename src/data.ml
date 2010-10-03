@@ -1,4 +1,6 @@
 
+(* let id = fun x -> x *)
+
 (* pair functions *)
 let tuple2 = fun a b -> (a, b)
 
@@ -44,3 +46,26 @@ let l1_rev : 'a l1_list -> 'a l1_list = fun l1 -> match L.rev (l1_list l1) with
   | []       -> failwith "Something wrong? l1_rev failed!"
 
 let apply a b = a b
+
+let rec take n xs =
+  match (n, xs) with
+    | (n, _) when n <= 0 -> []
+    | (n, [])            -> []
+    | (n, x :: xs')      -> x :: take (n - 1) xs'
+
+let rec drop n xs =
+  match (n, xs) with
+    | (n, _)  when n <= 0 -> xs
+    | (n, [])             -> []
+    | (n, _ :: xs')       -> drop (n - 1) xs'
+
+let list_compare xs ys =
+  let rec list_compare xs ys n = match (xs, ys) with
+    | ([], []) -> (true, "")
+    | (x :: xs', []) -> (false, "second is shorter.")
+    | ([], y :: ys') -> (false, "first is shorter.")
+    | (x :: xs', y :: ys') ->
+      if x <> y then (false, Format.sprintf "differ at %d" n)
+      else list_compare xs' ys' (n + 1)
+  in list_compare xs ys 0
+

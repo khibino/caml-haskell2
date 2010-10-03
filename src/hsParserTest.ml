@@ -3,12 +3,14 @@ open Simple.Combinator
 
 module P = HsParser
 module LO = HsLayout
+module ZL = LazyList
 
 let do_parse lzl raw seq_parser =
+  (* let run zl = (run seq_parser zl, zl) in *)
+  let run zl = run seq_parser zl in
   run
-    seq_parser
-    (if raw then [LazyList.tree_of_lzlist lzl]
-     else let lzl = LO.lazy_L (LO.input_of_L lzl) in
+    (if raw then ZL.return (ZL.tree_of_lzlist lzl)
+     else let lzl = LO.layout lzl in
           let _ = LO.show_out lzl in
           lzl)
 
@@ -125,13 +127,16 @@ let s_lbr_imptop_rbr02 () = s_lbr_imptop_rbr "{ foo 0 0 = 1 ; bar 1 1 = 2 }"
 let s_lbr_imptop_rbr21 () = s_lbr_imptop_rbr "{ import Foo0 ; import Foo1 ; foo 0 0 = 1 }"
 let s_lbr_imptop_rbr12 () = s_lbr_imptop_rbr "{ import Foo0 ; foo 0 0 = 1 ; bar 1 1 = 2 }"
 
-let s_body s = parse_str_raw_as_main s P.body
+let s_body_raw s = parse_str_raw_as_main s P.body
+let s_body s = parse_str_as_main false s P.body
 
 let s_body_ex () = s_body "{ import qualified FooBar as BarFoo ( foo, Foo(..), Bar, Foo'(foo', bar'), ) ; foo 0 0 = 1 ; foo x = \\ y -> x + y }"
 
 let s_body0 () = s_body "{ }"
 let s_body10 () = s_body "{ import Foo0 }"
-let s_body01 () = s_body "{ foo 0 0 = 1 }"
+(* let s_body01 () = s_body "{ foo = 1 }" *)
+let s_body01 () = s_body "foo = 1"
+(* let s_body01 () = s_body "{ foo 0 0 = 1 }" *)
 let s_body20 () = s_body "{ import Foo0 ; import Foo1 }"
 let s_body11 () = s_body "{ import Foo0 ; foo 0 0 = 1 }"
 let s_body02 () = s_body "{ foo 0 0 = 1 ; bar 1 1 = 2 }"
@@ -144,9 +149,18 @@ let s_body6 () = s_body "{ foo 0 0 = 1 ; foo x = \\ y -> x + y ; main = print (f
 let s_module_raw s = parse_str_raw_as_main s P.module_
 let s_module s = parse_str_as_main false s P.module_
 
+let s_module_raw01 () = s_module_raw "{ foo = 1 }"
+
 let s_module0 () = s_module ""
-let s_module1 () = s_module "foo 0 0 = 1\n"
+let s_module1 () = s_module "foo = 1"
+(* let s_module1 () = s_module "foo 0 0 = 1\n" *)
 let s_module2 () = s_module "foo 0 0 = 1\nfoo x = \\ y -> x + y\n"
+
+(*let s_any s = parse_str_as_main false s P.test_any
+let s_any1 () = s_any "foo = 1"*)
+
+let s_anys s = parse_str_as_main false s P.test_anys
+let s_anys1 () = s_anys "foo = 1"
 
 let file hs =
   do_parse

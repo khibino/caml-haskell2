@@ -11,18 +11,18 @@ let call = call_parser
 
 let (|.|) f g x = f (g x)
 
-let pred_tk : (TK.typ -> bool) -> (TK.t, TK.t) parser =
-  fun f -> pred (f |.| fst)
-let just_tk eq = pred_tk ((=) eq)
-let untag_tk : (TK.typ -> 'a option) -> (TK.t, 'a * TK.region) parser =
-  fun f ->
-    untag (fun (tk, reg) ->
+let pred_tk : string -> (TK.typ -> bool) -> (TK.t, TK.t) parser =
+  fun name f -> pred name (f |.| fst)
+let just_tk eq = pred_tk (TK.to_string eq) ((=) eq)
+let untag_tk : string -> (TK.typ -> 'a option) -> (TK.t, 'a * TK.region) parser =
+  fun name f ->
+    untag name (fun (tk, reg) ->
       match f tk with
         | Some v -> Some (v, reg)
         | None   -> None)
 
-let qual_id_tk f =
-  TK.with_region HSY.qual_id *<$> untag_tk f
+let qual_id_tk name f =
+  TK.with_region HSY.qual_id *<$> untag_tk name f
 
 let pos_dummy = TK.pos (-1) (-1)
 let region_dummy = TK.region pos_dummy pos_dummy
@@ -128,13 +128,13 @@ let l1_list_form pl1 = TK.with_region Data.l1_list *<$> l1_form pl1
 (* conid は doted_conid から使われている *)
 (* conid is used by doted_conid above *)
 (* Qualified constructor or module id is ambiguous *)
-let conid = untag_tk (function | TK.T_CONID s -> Some s | _ -> None)
-let doted_conid = untag_tk (function | TK.T_DOT_CONID s  -> Some s | _ -> None) <|> conid
+let conid = untag_tk "conid" (function | TK.T_CONID s -> Some s | _ -> None)
+let doted_conid = untag_tk "doted_conid" (function | TK.T_DOT_CONID s  -> Some s | _ -> None) <|> conid
 
 (* 10.2  Lexical Syntax *)
 
 (* literal 	 → 	integer | float | char | string      *)
-let literal = untag_tk (function
+let literal = untag_tk "literal" (function
   | TK.L_CHAR cp   -> Some (HSY.Char cp)
   | TK.L_STRING ca -> Some (HSY.Str ca)
   | TK.L_INTEGER i -> Some (HSY.Int i)
@@ -142,18 +142,18 @@ let literal = untag_tk (function
   | _              -> None)
 
 (* varsym 	 → 	( symbol⟨:⟩ {symbol} )⟨reservedop | dashes⟩      *)
-let varsym = untag_tk (function
+let varsym = untag_tk "varsym" (function
   | TK.T_VARSYM s -> Some s
   | TK.KS_PLUS    -> Some HSY.sym_plus
   | TK.KS_MINUS   -> Some HSY.sym_minus
   | TK.KS_EXCLAM  -> Some HSY.sym_exclam
   | _             -> None)
 (* consym 	→ 	( : {symbol}){reservedop}      *)
-let consym = untag_tk (function | TK.T_CONSYM s -> Some s | _ -> None)
+let consym = untag_tk "consym" (function | TK.T_CONSYM s -> Some s | _ -> None)
 
 
 (* varid 	 	 (variables)      *)
-let varid = untag_tk (function
+let varid = untag_tk "varid" (function
   | TK.T_VARID s   -> Some s
   | TK.K_AS        -> Some HSY.sym_as
   | TK.K_QUALIFIED -> Some HSY.sym_qualified
@@ -171,38 +171,38 @@ let tycls = conid
 let modid = doted_conid
 
 (* qvarid 	→ 	[ modid . ] varid      *)
-let qvarid = qual_id_tk (function
+let qvarid = qual_id_tk "qvarid" (function
   | TK.T_MOD_VARID p  -> Some p
   | _ -> None)
   <|> HPST.q_not_qual *<$> varid
 (* qconid 	→ 	[ modid . ] conid      *)
 let qconid  = HPST.sym_to_qconid *<$> doted_conid
 (* qtycon 	→ 	[ modid . ] tycon      *)
-let qtycon  = qual_id_tk (function
+let qtycon  = qual_id_tk "qtycon" (function
   | TK.T_DOT_CONID s  -> Some (TK.syms_of_qstring (Symbol.name s))
   | _ -> None)
   <|> HPST.q_not_qual *<$> tycon
 (* qtycls 	→ 	[ modid . ] tycls      *)
-let qtycls  = qual_id_tk (function
+let qtycls  = qual_id_tk "qtycls" (function
   | TK.T_DOT_CONID s  -> Some (TK.syms_of_qstring (Symbol.name s))
   | _ -> None)
   <|> HPST.q_not_qual *<$> tycls
 (* qvarsym 	→ 	[ modid . ] varsym      *)
-let qvarsym = qual_id_tk (function
+let qvarsym = qual_id_tk "qvarsym" (function
   | TK.T_MOD_VARSYM p -> Some p
   | _ -> None)
   <|> HPST.q_not_qual *<$> varsym
 (* qconsym 	→ 	[ modid . ] consym      *)
-let qconsym = qual_id_tk (function
+let qconsym = qual_id_tk "qconsym" (function
   | TK.T_MOD_CONSYM p -> Some p
   | _ -> None)
   <|> HPST.q_not_qual *<$> consym
 
-let string  = untag_tk (function | TK.L_STRING ca -> Some ca | _ -> None)
-let integer = untag_tk (function | TK.L_INTEGER i -> Some i | _ -> None)
-let float   = untag_tk (function | TK.L_FLOAT f -> Some f | _ -> None)
+let string  = untag_tk "string" (function | TK.L_STRING ca -> Some ca | _ -> None)
+let integer = untag_tk "integer" (function | TK.L_INTEGER i -> Some i | _ -> None)
+let float   = untag_tk "float" (function | TK.L_FLOAT f -> Some f | _ -> None)
 
-let fixity_int = Data.with_snd Int64.to_int *<$> untag_tk (function
+let fixity_int = Data.with_snd Int64.to_int *<$> untag_tk "int0-9" (function
   | TK.L_INTEGER i when 0L <= i && i <= 9L -> Some i
   | TK.L_INTEGER i -> (* generate error infomation ; *) None
   | _ -> None)
@@ -259,7 +259,7 @@ let ops = l1_separated op comma
 let vars = l1_separated var comma
 
 (* fixity 	→ 	infixl | infixr | infix      *)
-let fixity = untag_tk (function
+let fixity = untag_tk "fixity" (function
   | TK.K_INFIX  -> Some HSY.I_infix
   | TK.K_INFIXL -> Some HSY.I_left
   | TK.K_INFIXR -> Some HSY.I_right
@@ -403,7 +403,7 @@ let safety_words = L.map Symbol.intern
 let unsafe = Symbol.intern
 let safe   = Symbol.intern "safe"
 
-let callconv = untag_tk (function
+let callconv = untag_tk "callconv" (function
   | TK.T_VARID s when L.memq s conv_words -> Some s
   | _                                     -> None)
 
@@ -414,7 +414,7 @@ let impent = ~?string
 let expent = ~?string
 
 (* safety 	→ 	unsafe | safe      *)
-let safety = untag_tk (function
+let safety = untag_tk "safety" (function
   | TK.T_VARID s when L.memq s safety_words -> Some s
   | _                                       -> None)
 
@@ -801,12 +801,20 @@ let body =
 (* module 	 → 	module modid [exports] where body       *)
 (* 	| 	body      *)
 let module_ =
-  HSY.module_ HPST.begin_parse_module
+  ( (*HSY.module_ HPST.begin_parse_module
   *<$> tk_module **|> modid *<*> ~?exports *<*> where **> body
-    <|> HSY.module_main HPST.begin_parse_module *<$> body
+    <|> *) HSY.module_main HPST.begin_parse_module *<$> body ) **< just_tk TK.EOF
 
+let drop_any    = pred_tk "drop_any" (fun _ -> true)
 
-let drop_any    = pred_tk (fun _ -> true)
+let test_any : (TK.t, TK.t) parser = any
+
+let test_any2 : (TK.t, TK.t) parser = any **> any
+let test_any3 : (TK.t, TK.t) parser = any **> any **> any
+let test_any4 : (TK.t, TK.t) parser = any **> any **> any **> any
+let test_any5 : (TK.t, TK.t) parser = any **> any **> any **> any **> any
+
+let test_anys : (TK.t, TK.typ list * TK.region) parser = some' (any)
 
 let test_id = drop_any *>
   some (qvar <|> gconsym <|> qconop <|> qvarop)
@@ -848,3 +856,8 @@ let test_lbr_imptop_rbr =
 
 let test_decls_cont : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
   separated ~$decl semi
+
+let test_bid = braced (qvar <|> gconsym <|> qconop <|> qvarop)
+
+let test_bbody = braced body
+
