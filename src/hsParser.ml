@@ -556,8 +556,8 @@ and     lexp () =
                                 *<*> just_tk TK.K_ELSE **|> ~$exp)
         <|> just_tk TK.K_CASE **|> (HSY.case *<$>
                                       ~$exp *<*>
-                                      just_tk TK.K_OF **|> braced ~$alts)
-          <|> HSY.do_ *<$> just_tk TK.K_DO **|> braced ~$stmts
+                                      just_tk TK.K_OF **|> shift_braced ~$alts)
+          <|> HSY.do_ *<$> just_tk TK.K_DO **|> shift_braced ~$stmts
             <|> HSY.fexp *<$> ~$fexp
 
 (* fexp 	→ 	[fexp] aexp     	(function application) *)
@@ -664,7 +664,7 @@ and     gendecl () =
     decl の後にあるのは semi か r_brace
     decl is followed by semi or r_brace
 ***)
-and     decls () = braced (separated ~$decl semi) 
+and     decls () = shift_braced (separated ~$decl semi) 
 
 (* decl 	→ 	gendecl      *)
 (* 	| 	(funlhs | pat) rhs      *)
@@ -742,8 +742,8 @@ let import =
 (* impspec 	→ 	( import1 , … , importn [ , ] )     	(n ≥ 0) *)
 (* 	| 	hiding ( import1 , … , importn [ , ] )     	(n ≥ 0) *)
 let impspec =
-  HSY.is_imp *<$> parened (separated import comma **< comma)
-  <|> HSY.is_hide *<$> just_tk TK.K_HIDING **> parened (separated import comma **< comma)
+  HSY.is_imp *<$> parened (separated import comma **< ~?comma)
+  <|> HSY.is_hide *<$> just_tk TK.K_HIDING **> parened (separated import comma **< ~?comma)
 
 (* impdecl 	→ 	import [qualified] modid [as modid] [impspec]      *)
 (* 	| 	    	(empty declaration) *)
@@ -806,9 +806,10 @@ let body =
 (* module 	 → 	module modid [exports] where body       *)
 (* 	| 	body      *)
 let module_ =
-  ( (*HSY.module_ HPST.begin_parse_module
+  (HSY.module_ HPST.begin_parse_module
   *<$> tk_module **|> modid *<*> ~?exports *<*> where **> body
-    <|> *) HSY.module_main HPST.begin_parse_module *<$> body ) **< just_tk TK.EOF
+    <|> HSY.module_main HPST.begin_parse_module *<$> body)
+  **< just_tk TK.EOF
 
 let drop_any    = pred_tk "drop_any" (fun _ -> true)
 

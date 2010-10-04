@@ -11,7 +11,7 @@ let do_parse lzl raw seq_parser =
   run
     (if raw then ZL.return (ZL.tree_of_lzlist lzl)
      else let lzl = LO.layout lzl in
-          let _ = LO.show_out lzl in
+          (* let _ = LO.show_out lzl in *)
           lzl)
 
 let parse_as_main lzl raw seq_parser =
@@ -51,8 +51,12 @@ let ch_impspec () = parse_raw_as_main P.impspec
 let ch_decls_cont () = parse_raw_as_main P.test_decls_cont
 let ch_body () = parse_raw_as_main P.body
 
-let s_deriving_0 () = parse_str_raw_as_main "deriving Show" P.deriving
-let s_deriving_1 () = parse_str_raw_as_main "deriving (Eq, Ord, Num)" P.deriving
+let s_var s = parse_str_raw_as_main s P.var
+let s_var0 () = s_var "foo"
+let s_var1 () = s_var "(<|>)"
+
+let s_deriving0 () = parse_str_raw_as_main "deriving Show" P.deriving
+let s_deriving1 () = parse_str_raw_as_main "deriving (Eq, Ord, Num)" P.deriving
 
 let s_lexp s = parse_str_raw_as_main s P.test_lexp
 let s_exp s = parse_str_raw_as_main s P.test_exp
@@ -74,10 +78,25 @@ let s_type_fun () = parse_str_raw_as_main "(Either String a, b -> c)" P.test_typ
 
 let s_constrs () = parse_str_raw_as_main "Foo !a b !c | Bar" P.constrs
 let s_exports () = parse_str_raw_as_main "( foo, Foo(..), Bar, Foo'(foo', bar'), module Bar, )" P.exports
-let s_impspec () = parse_str_raw_as_main "( foo, Foo(..), Bar, Foo'(foo', bar'), ) " P.impspec
-let s_impspec_hide () = parse_str_raw_as_main "hiding ( foo, Foo(..), Bar, Foo'(foo', bar'), ) " P.impspec
+
+let s_import s = parse_str_raw_as_main s P.import
+let s_import0 () = s_import "(<|>)"
+let s_import1 () = s_import "(Foo (..))"
+let s_import2 () = s_import "(Foo (bar, bar0))"
+
+let s_impspec s = parse_str_raw_as_main s P.impspec
+
+let s_impspec0 () = s_impspec "( foo, Foo(..), Bar, Foo'(foo', bar'), ) "
+let s_impspec_h0 () = s_impspec "hiding ( foo, Foo(..), Bar, Foo'(foo', bar'), ) "
+let s_impspec_h_ex () = s_impspec "hiding (foo)"
+let s_impspec_h1 () = s_impspec "hiding ()"
+let s_impspec_h2 () = s_impspec "hiding ((<|>))"
+let s_impspec_h3 () = s_impspec "hiding ( many )"
+let s_impspec_h4 () = s_impspec "hiding ((<|>), many, State, label)"
+
 let s_impdecl () = parse_str_raw_as_main "import qualified FooBar as BarFoo ( foo, Foo(..), Bar, Foo'(foo', bar'), ) " P.impdecl
 let s_impdecl0 () = parse_str_raw_as_main "import FooBar ( foo, Foo(..), Bar, Foo'(foo', bar'), ) " P.impdecl
+let s_impdecl1 () = parse_str_raw_as_main "import Text.Parsec hiding ((<|>), many, State, label)" P.impdecl
 
 let s_impdecls s = parse_str_raw_as_main s P.impdecls
 
