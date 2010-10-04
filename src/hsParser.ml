@@ -73,11 +73,13 @@ let between a b = form_between a b |.| (lift_a fst)
 let form_parened    p = form_between l_paren                      r_paren   p
 let form_bracketed  p = form_between (just_tk TK.SP_LEFT_BRACKET) (just_tk TK.SP_RIGHT_BRACKET) p
 let form_braced     p = form_between l_brace                      r_brace   p
+let form_shift_braced  p = form_between l_brace                   match_or_shift_rb   p
 let form_backquoted p = form_between (just_tk TK.SP_B_QUOTE)      (just_tk TK.SP_B_QUOTE)       p
 
 let parened    p = form_parened    ((lift_a fst) p)
 let bracketed  p = form_bracketed  ((lift_a fst) p)
 let braced     p = form_braced     ((lift_a fst) p)
+let shift_braced  p = form_shift_braced  ((lift_a fst) p)
 let backquoted p = form_backquoted ((lift_a fst) p)
 
 module Raw = struct
@@ -501,6 +503,7 @@ let rec funlhs () =
 
 (* [where decls] *)
 let rec opt_where_decls () = ~?(where **> ~$decls)
+and     let_decls () = let_ **|> ~$decls
 
 (* rhs 	→ 	= exp [where decls]      *)
 (* 	| 	gdrhs [where decls]      *)
@@ -522,7 +525,7 @@ and     guards () =
 (* 	| 	infixexp     	(boolean guard) *)
 and     guard () =
   HSY.gu_pat *<$> ~$pat *<*> l_arrow **> ~$infixexp
-  <|> HSY.gu_let *<$> ~$decls
+  <|> HSY.gu_let *<$> ~$let_decls
     <|> HSY.gu_exp *<$> ~$infixexp
 
 (* exp 	→ 	infixexp :: [context =>] type     	(expression type signature) *)
@@ -547,7 +550,7 @@ and     infixexp () = HSY.op_app *<$> ~$lexp *<*> qop *<*> ~$infixexp
 and     lexp () =
   HSY.lambda
   *<$> just_tk TK.KS_B_SLASH **|> l1_some ~$apat *<*> r_arrow **> ~$exp
-    <|> let_ **|> (HSY.let_ *<$> ~$decls *<*> just_tk TK.K_IN **|> ~$exp)
+    <|> HSY.let_ *<$> ~$let_decls *<*> just_tk TK.K_IN **|> ~$exp
       <|> just_tk TK.K_IF **|> (HSY.if_ *<$> ~$exp **< opt_semi
                                 *<*> just_tk TK.K_THEN **|> ~$exp **< opt_semi
                                 *<*> just_tk TK.K_ELSE **|> ~$exp)
@@ -607,7 +610,7 @@ and    aexp () =
 (* 	| 	exp     	(guard) *)
 and     qual () =
   HSY.q_gen *<$> ~$pat *<*> l_arrow **> ~$exp
-  <|> HSY.q_let *<$> ~$decls
+  <|> HSY.q_let *<$> ~$let_decls
     <|> HSY.q_exp *<$> ~$exp
  
 (* alts 	→ 	alt1 ; … ; altn     	(n ≥ 1) *)
@@ -635,7 +638,7 @@ and     stmts () =
 and     stmt () =
   (HSY.st_act *<$> ~$pat *<*> l_arrow **> ~$exp
    <|> HSY.st_exp *<$> ~$exp
-     <|> HSY.st_let_ *<$> let_ **> ~$decls) **< semi
+     <|> HSY.st_let_ *<$> ~$let_decls) **< semi
   <|> HSY.st_empty *<$> semi
  
 (* fbind 	→ 	qvar = exp      *)
