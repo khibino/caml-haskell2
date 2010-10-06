@@ -1,16 +1,16 @@
 
-OCAMLFIND_PP_OPT = -syntax camlp4o
-OCAMLFIND_PKG_OPT = -package ulex -package extlib
-OCAMLFIND_VERBOSE = -verbose
+ocamlfind_pp_opt = -syntax camlp4o
+ocamlfind_pkg_opt = -package ulex -package extlib
+ocamlfind_verbose = -verbose
 
 extra_interfaces = lablgtk2 ulex extlib
 extra_archives = lablgtk ulexing extLib
 
 %Ulexer.cmo: %Ulexer.ml
-	ocamlfind ocamlc -c -o $@ $(OCAMLFIND_PKG_OPT) $(OCAMLFIND_PP_OPT) $(OCAMLFIND_VERBOSE) $<
+	ocamlfind ocamlc -c -o $@ $(ocamlfind_pkg_opt) $(ocamlfind_pp_opt) $(ocamlfind_verbose) $<
 
 %Ulexer.ml.dep: %Ulexer.ml
-	ocamlfind ocamldep $(OCAMLFIND_PKG_OPT) $(OCAMLFIND_PP_OPT)  $< > $@
+	ocamlfind ocamldep $(ocamlfind_pkg_opt) $(ocamlfind_pp_opt)  $< > $@
 
 include ocaml_basic.gmk
 
@@ -42,13 +42,16 @@ deps = $(sources:.ml=.ml.dep)
 include $(deps)
 
 scratch.cma: $(objs)
-	ocamlfind ocamlc -a -o $@ $(OCAMLFIND_PKG_OPT) $(OCAMLFIND_VERBOSE) extLib.cma $^
+	ocamlfind ocamlc -a -o $@ $(ocamlfind_pkg_opt) $(ocamlfind_verbose) extLib.cma $^
 
 hsParserTestMain_b: scratch.cma hsParserTestMain.cmo
 	$(BYTE_LINK.ml) -o $@ $(byte_archives) $^
 
 hpt: hsParserTestMain_b
 	cp $< $@
+
+commit: rebuild
+	hg commit
 
 info:
 	$(ocamldep) $(sources)
