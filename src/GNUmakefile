@@ -1,6 +1,6 @@
 
 OCAMLFIND_PP_OPT = -syntax camlp4o
-OCAMLFIND_PKG_OPT = -package ulex
+OCAMLFIND_PKG_OPT = -package ulex -package extlib
 OCAMLFIND_VERBOSE = -verbose
 
 extra_interfaces = lablgtk2 ulex extlib
