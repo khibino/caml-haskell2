@@ -3,8 +3,8 @@ OCAMLFIND_PP_OPT = -syntax camlp4o
 OCAMLFIND_PKG_OPT = -package ulex
 OCAMLFIND_VERBOSE = -verbose
 
-extra_interfaces = lablgtk2 ulex
-extra_archives = lablgtk ulexing
+extra_interfaces = lablgtk2 ulex extlib
+extra_archives = lablgtk ulexing extLib
 
 %Ulexer.cmo: %Ulexer.ml
 	ocamlfind ocamlc -c -o $@ $(OCAMLFIND_PKG_OPT) $(OCAMLFIND_PP_OPT) $(OCAMLFIND_VERBOSE) $<
@@ -42,7 +42,7 @@ deps = $(sources:.ml=.ml.dep)
 include $(deps)
 
 scratch.cma: $(objs)
-	ocamlfind ocamlc -a -o $@ $(OCAMLFIND_PKG_OPT) $(OCAMLFIND_VERBOSE) $^
+	ocamlfind ocamlc -a -o $@ $(OCAMLFIND_PKG_OPT) $(OCAMLFIND_VERBOSE) extLib.cma $^
 
 hsParserTestMain_b: scratch.cma hsParserTestMain.cmo
 	$(BYTE_LINK.ml) -o $@ $(byte_archives) $^

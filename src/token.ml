@@ -213,3 +213,5 @@ let to_string = function
   | BLK_LEVEL(lv) -> Format.sprintf "<%d>" lv
   | EOF -> "<EOF>"
 
+let to_string_with_region : t -> string =
+  fun (tk, reg) -> to_string tk ^ "(" ^ string_of_region reg ^ ")"

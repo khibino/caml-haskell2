@@ -143,7 +143,7 @@ struct
         | None ->
           (match ZL.next tfo with
             | Some (_, tfo) -> ma tfo
-            | None          -> None)
+            | None           -> None)
         | v    -> v
 
   let tokens tkg =

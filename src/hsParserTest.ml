@@ -11,7 +11,7 @@ let do_parse lzl raw seq_parser =
   run
     (if raw then ZL.return (ZL.tree_of_lzlist lzl)
      else let lzl = LO.layout lzl in
-          (* let _ = LO.show_out lzl in *)
+          let _ = LO.show_out lzl in
           lzl)
 
 let parse_as_main lzl raw seq_parser =
@@ -59,16 +59,25 @@ let s_deriving0 () = parse_str_raw_as_main "deriving Show" P.deriving
 let s_deriving1 () = parse_str_raw_as_main "deriving (Eq, Ord, Num)" P.deriving
 
 let s_lexp s = parse_str_raw_as_main s P.test_lexp
+
 let s_exp s = parse_str_raw_as_main s P.test_exp
 
-let s_exp_lambda () = parse_str_raw_as_main "\\ (1:xs,'a':ys) -> (xs, ys)" P.test_exp
-let s_exp_aseq  () = parse_str_raw_as_main "[1, 3 .. 11]" P.test_exp
-let s_exp_lcomp  () = parse_str_raw_as_main "[(x, y) | x <- [1,2,3], y <- ['a','b'] ]" P.test_exp
-let s_exp_lbl_upd () = parse_str_raw_as_main "x { Foo.a = y, Foo.b = z } { Foo.c = p, Foo.d = q }" P.test_exp
-let s_exp_do () = parse_str_raw_as_main "do { let { x = 1; y = 2}; 1 }" P.test_exp
-let s_exp_t_class () = parse_str_raw_as_main "p :: (Eq (f b), Functor f) => (a -> b) -> f a -> f b -> Bool" P.test_exp
+let s_exp0 () = s_exp "read `extR` (id :: String -> String) `extR` chShow"
+let s_exp_lambda () = s_exp "\\ (1:xs,'a':ys) -> (xs, ys)"
+let s_exp_aseq  () = s_exp "[1, 3 .. 11]"
+let s_exp_lcomp  () = s_exp "[(x, y) | x <- [1,2,3], y <- ['a','b'] ]"
+let s_exp_lbl_upd () = s_exp "x { Foo.a = y, Foo.b = z } { Foo.c = p, Foo.d = q }"
+let s_exp_do () = s_exp "do { let { x = 1; y = 2}; 1 }"
+let s_exp_t_class () = s_exp "p :: (Eq (f b), Functor f) => (a -> b) -> f a -> f b -> Bool"
 
 let s_rhs s = parse_str_raw_as_main s P.test_rhs
+
+let s_rhs0 () = s_rhs "= read `extR` (id :: String -> String) `extR` chShow where { chShow [x] = x; chShow x = read x }"
+
+let s_opt_where s = parse_str_raw_as_main s P.test_opt_where_decls
+
+let s_opt_where0 () = s_opt_where
+  "where { chShow [x] = x; chShow x = read x }"
 
 let s_decl s = parse_str_raw_as_main s P.test_decl
 

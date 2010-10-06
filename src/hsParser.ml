@@ -844,6 +844,8 @@ let test_type : (TK.t, HSY.type_ * TK.region) parser =
 let test_apat : (TK.t, HSY.pat HSY.apat * TK.region) parser =
   ~$apat
 
+let test_opt_where_decls = ~$opt_where_decls
+
 let test_decls : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
   ~$decls
 
