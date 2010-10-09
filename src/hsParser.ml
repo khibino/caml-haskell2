@@ -1,5 +1,7 @@
 
-open Simple.Combinator
+(* module Combinator = Simple.Combinator *)
+module Combinator = Simple.DebugCombinator
+open Combinator
 
 module L = List
 
@@ -94,8 +96,8 @@ module Raw = struct
     Data.l1_cons *<$> a *<*> d **> l1_separated a d
 
   (* リストとなる構文要素 - 長さ0でも可 - 位置情報付き *)
-  let some = Simple.Combinator.some
-  let many = Simple.Combinator.many
+  let some = Combinator.some
+  let many = Combinator.many
 
   let separated a d =
     Data.l1_list *<$> l1_separated a d <|> pure []

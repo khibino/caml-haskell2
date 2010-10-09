@@ -1,6 +1,9 @@
 
 (* let id = fun x -> x *)
 
+let undefined () = failwith "Undefined."
+let zundefined = lazy (undefined ())
+
 (* pair functions *)
 let tuple2 = fun a b -> (a, b)
 

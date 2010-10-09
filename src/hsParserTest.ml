@@ -1,5 +1,7 @@
 
-open Simple.Combinator
+(* module Combinator = Simple.Combinator *)
+module Combinator = Simple.DebugCombinator
+open Combinator
 
 module P = HsParser
 module LO = HsLayout
