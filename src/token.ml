@@ -60,7 +60,7 @@ let show_char cp = "'" ^ char_to_string cp ^ "'"
 let show_string cpl =
   "\"" ^ String.concat "" (List.map char_to_string (Array.to_list cpl)) ^ "\""
 
-type typ =
+type type_ =
   | SP_LEFT_PAREN
   | SP_RIGHT_PAREN
   | SP_COMMA
@@ -134,12 +134,12 @@ type typ =
   | BLK_LEVEL of int
   | EOF
 
-type t = (typ * region)
+type t = (type_ * region)
 
 let with_region_just v (_, reg) = (v, reg)
 let with_region : ('a -> 'b) -> ('a * region) -> ('b * region) = Data.with_snd
 
-let to_string = function
+let type_to_string = function
   | SP_LEFT_PAREN  -> "("
   | SP_RIGHT_PAREN -> ")"
   | SP_COMMA -> ","
@@ -213,5 +213,5 @@ let to_string = function
   | BLK_LEVEL(lv) -> Format.sprintf "<%d>" lv
   | EOF -> "<EOF>"
 
-let to_string_with_region : t -> string =
-  fun (tk, reg) -> to_string tk ^ "(" ^ string_of_region reg ^ ")"
+let to_string : t -> string =
+  fun (tk, reg) -> type_to_string tk ^ "(" ^ string_of_region reg ^ ")"

@@ -1,5 +1,10 @@
 
-module Driver =
+module type TOKEN =
+sig
+
+end
+
+module Driver (* (Tk : ) *)  =
 struct
 
   module ZL = LazyList
@@ -82,6 +87,95 @@ struct
 end
 
 module Combinator = Parser.Combinator2(Driver)
+
+(*
+module DriverWithRegion =
+struct
+
+  module ZL = LazyList
+
+  type region = Token.region
+  type 'tk tree_t = ('tk * region) ZL.tree_t
+  type 'tk forest_t = 'tk tree_t ZL.t
+
+  type 'tk tklist = 'tk forest_t
+  type ('tk, 'e) parsed = (('e * region) * 'tk tklist) option
+  type ('tk, 'e) parser = 'tk tklist -> ('tk, 'e) parsed
+  type ('tk, 'e) result = ('tk, 'e) parsed
+
+  let cover_region = Token.cover_region
+
+  let bind
+      : ('tk, 'e0) parser -> ('e0 -> ('tk, 'e1) parser) ->
+        ('tk, 'e1) parser =
+    fun ma f tfo ->
+      match ma tfo with
+        | None -> None
+        | Some ((a, ra), tfo) ->
+          let (b, rb) = f a tfo in
+          (b, cover_region ra rb)
+
+  let (>>=) = bind
+
+  let return : 'e -> ('tk, 'e) parser =
+    fun e tfo -> Some (e, tfo)
+
+  let mzero : ('tk, 'e) parser = fun _ -> None
+
+  let mplus
+      : ('tk, 'e) parser -> ('tk, 'e) parser ->
+        ('tk, 'e) parser =
+    fun ma mb tfo ->
+      match ma tfo with
+        | None -> mb tfo
+        | v    -> v
+
+  let and_parser : ('tk, 'e) parser -> ('tk, unit) parser =
+    fun ma tfo ->
+      match ma tfo with
+        | None   -> None
+        | Some _ -> Some ((), tfo)
+
+  let not_parser : ('tk, 'e) parser -> ('tk, unit) parser =
+    fun ma tfo ->
+      match ma tfo with
+        | None   -> Some ((), tfo)
+        | Some _ -> None
+
+  let any : ('tk, 'tk) parser =
+    fun tfo ->
+      match ZL.peek tfo with
+        | None                         -> None
+        | Some (lazy (ZL.Node (node))) -> Some node
+
+  let satisfy : string -> ('tk -> bool) -> ('tk, 'tk) parser =
+    fun name pred tfo ->
+      match ZL.peek tfo with
+        | Some (lazy (ZL.Node (tk, _ as node))) when pred tk
+            -> Some node
+        | Some _ | None -> None
+
+  (* マッチしなかったときに次の枝をマッチする parser に変換 *)
+  let match_or_shift : ('tk, 'tk) parser -> ('tk, 'tk) parser =
+    fun ma tfo ->
+      match ma tfo with
+        | None ->
+          (match ZL.next tfo with
+            | Some (_, tfo) -> ma tfo
+            | None           -> None)
+        | v    -> v
+
+  let tokens : (unit -> 'a) -> ('a) tklist =
+    fun tkg ->
+      ZL.return (ZL.t_unfold
+                   ()
+                   (fun () -> (tkg (), ZL.return ())))
+
+  let run : ('tk, 'e) parser -> ('tk) tklist -> ('tk, 'e) result =
+    fun p tkl -> p tkl
+
+end
+*)
 
 module DebugInfo =
 struct

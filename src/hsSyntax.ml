@@ -218,7 +218,7 @@ let gt_qtycon = TK.with_region (fun qtycon -> GT_QTycon qtycon)
 let gt_tuple  = TK.with_region (fun i -> GT_Tuple i)
 (* GT_Unit *)
 (* GT_List *)
-let gt_arrow : (TK.typ * TK.region) -> (gtycon * TK.region)
+let gt_arrow : (TK.type_ * TK.region) -> (gtycon * TK.region)
   = TK.with_region_just GT_Arrow
   
 let at_gtc   = TK.with_region (fun gtc -> AT_gtc gtc)
@@ -378,7 +378,7 @@ let ap_var var as_p = comp2_right_opt var as_p (fun a b -> AP_var (a, b))
 let ap_gcon = TK.with_region (fun gcon -> AP_gcon gcon)
 let ap_qcon qcon flist = comp2_region qcon flist (fun a b -> AP_qcon (a, b))
 let ap_lit  = TK.with_region (fun lit -> AP_lit lit)
-let ap_all : (TK.typ * TK.region) -> (pat apat * TK.region)
+let ap_all : (TK.type_ * TK.region) -> (pat apat * TK.region)
   = TK.with_region_just AP_all
 let ap_paren a = TK.with_region (fun pat -> AP_paren pat) a
 let ap_tuple a = TK.with_region (fun pl -> AP_tuple (Data.l1_list pl)) a

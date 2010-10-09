@@ -87,8 +87,6 @@ let lazy_L : 'a t -> 'a forest_t =
         ->               failwith "parse error. - layout - Invalid input pattern."
     in
     foldr (fun lz res -> rec_L (lz, ms) ++ res) nil tfo
-    (*List.rev
-      (List.fold_left (fun res lz -> List.rev_append (rec_L (lz, ms)) res) [] f)*)
 
   in
   (fun lz ->
@@ -97,6 +95,6 @@ let lazy_L : 'a t -> 'a forest_t =
       | [_] -> lout
       | _   -> failwith "parse error. - layout - Wrong input token list." )
 
-let show_out lzl = show_token_forest TK.to_string lzl
+let show_out lzl = show_token_forest TK.type_to_string lzl
 
 let layout lzl = lazy_L (input_of_L lzl)

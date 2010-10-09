@@ -13,10 +13,10 @@ let call = call_parser
 
 let (|.|) f g x = f (g x)
 
-let pred_tk : string -> (TK.typ -> bool) -> (TK.t, TK.t) parser =
+let pred_tk : string -> (TK.type_ -> bool) -> (TK.t, TK.t) parser =
   fun name f -> pred name (f |.| fst)
-let just_tk eq = pred_tk (TK.to_string eq) ((=) eq)
-let untag_tk : string -> (TK.typ -> 'a option) -> (TK.t, 'a * TK.region) parser =
+let just_tk eq = pred_tk (TK.type_to_string eq) ((=) eq)
+let untag_tk : string -> (TK.type_ -> 'a option) -> (TK.t, 'a * TK.region) parser =
   fun name f ->
     untag name (fun (tk, reg) ->
       match f tk with
@@ -822,7 +822,7 @@ let test_any3 : (TK.t, TK.t) parser = any **> any **> any
 let test_any4 : (TK.t, TK.t) parser = any **> any **> any **> any
 let test_any5 : (TK.t, TK.t) parser = any **> any **> any **> any **> any
 
-let test_anys : (TK.t, TK.typ list * TK.region) parser = some' (any)
+let test_anys : (TK.t, TK.type_ list * TK.region) parser = some' (any)
 
 let test_id = drop_any *>
   some (qvar <|> gconsym <|> qconop <|> qvarop)

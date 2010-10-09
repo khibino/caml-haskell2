@@ -2,7 +2,7 @@
 module LO = HsLayout
 
 let do_chan_input chan_in =
-  List.map (fun e -> Token.to_string (fst e))
+  List.map (fun e -> Token.type_to_string (fst e))
     (LazyList.to_list
        (LO.input_of_L (HsUlexer.lazy_list_of_channel chan_in)))
 
