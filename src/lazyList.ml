@@ -86,7 +86,7 @@ and  'a tree_t = ('a node_t) Lazy.t
 
 and 'a forest_t = ('a tree_t) t
 
-let empty = Nil
+let empty = Z.lazy_from_val Nil
 
 let empty_p x = (x = empty)
 
@@ -140,6 +140,13 @@ let tree_of_lzlist l =
 
 let rec tmap f (lazy (Node (n, chld))) =
   lazy (Node (f n, (map (tmap f) chld)))
+
+let rec tree_to_lzlist tr =
+  unfold (return tr)
+    (fun forest ->
+      match peek forest with
+        | None                 -> None
+        | Some (lazy (Node n)) -> Some n)
 
 let (show_token_tree, show_token_forest) =
   let make_show to_string =

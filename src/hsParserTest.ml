@@ -13,7 +13,7 @@ let do_parse lzl raw seq_parser =
   run
     (if raw then ZL.return (ZL.tree_of_lzlist lzl)
      else let lzl = LO.layout lzl in
-          let _ = LO.show_out lzl in
+          (* let _ = LO.show_out lzl in *)
           lzl)
 
 let parse_as_main lzl raw seq_parser =
@@ -35,6 +35,38 @@ let parse_str_as_main raw str seq_parser =
 
 let parse_str_raw_as_main str seq_parser =
   parse_str_as_main true str seq_parser
+
+module F = Printf
+
+type error = string option
+(* type test_result = ((int * int) * error list * Token.t list list) *)
+type test_result = ((int * int) * error list * Token.t ZL.tree_t list)
+
+let empty_result : test_result = ((0, 0), [], [])
+let show_result : test_result -> string =
+  fun ((succ,total), _, _) -> F.sprintf "%d/%d" succ total
+
+let batch_str_raw_as_main seq_parser strl =
+  List.fold_left
+    (fun ((succ, total), errs, tokens) str ->
+      match parse_str_raw_as_main str seq_parser with
+        | Some (_, rest) ->
+          (match ZL.peek rest with
+            | None -> ((succ + 1, total + 1), None :: errs, tokens)
+            | Some rest when fst (ZL.t_peek rest) = Token.EOF
+                        -> ((succ + 1, total + 1), None :: errs, tokens)
+            | Some rest -> ((succ, total + 1),
+                            Some (ZL.foldr
+                                    (fun a b -> b ^ " " ^ Token.type_to_string (fst a))
+                                    (F.sprintf "'%s' failed. rest tokens: " str)
+                                    (ZL.tree_to_lzlist rest)) :: errs,
+                            (* ZL.to_list (ZL.tree_to_lzlist rest) :: tokens *)
+                            rest :: tokens
+            )
+          )
+        | None   -> ((succ, total + 1), Some (F.sprintf "'%s' failed." str) :: errs, tokens))
+    empty_result
+    strl
 
 let ch_id () = parse_raw_as_main P.test_id
 let ch_exp () = parse_raw_as_main P.test_exp
@@ -209,3 +241,7 @@ let file hs =
     (HsUlexer.lazy_list_of_channel (open_in_bin ("../sample/" ^ hs)))
     false
     P.module_
+
+let batch () =
+  batch_str_raw_as_main P.var
+    ["foo"; "(<|>)"]
