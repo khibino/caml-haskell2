@@ -1,6 +1,6 @@
 
-(* module Combinator = Simple.Combinator *)
-module Combinator = Simple.DebugCombinator
+module Combinator = Simple.Combinator(Token)
+(* module Combinator = Simple.DebugCombinator(Token) *)
 open Combinator
 
 module L = List
@@ -13,10 +13,10 @@ let call = call_parser
 
 let (|.|) f g x = f (g x)
 
-let pred_tk : string -> (TK.type_ -> bool) -> (TK.t, TK.t) parser =
+let pred_tk : string -> (TK.type_ -> bool) -> TK.t parser =
   fun name f -> pred name (f |.| fst)
 let just_tk eq = pred_tk (TK.type_to_string eq) ((=) eq)
-let untag_tk : string -> (TK.type_ -> 'a option) -> (TK.t, 'a * TK.region) parser =
+let untag_tk : string -> (TK.type_ -> 'a option) -> ('a * TK.region) parser =
   fun name f ->
     untag name (fun (tk, reg) ->
       match f tk with
@@ -32,7 +32,7 @@ let pure_with_dummy_region v = pure (v, region_dummy)
 
 let pos_fix_later = pos_dummy
 let region_fix_later = TK.region pos_fix_later pos_fix_later
-let p_fix_later : (TK.t, unit * TK.region) parser = pure ((), region_fix_later)
+let p_fix_later : (unit * TK.region) parser = pure ((), region_fix_later)
 
 let tk_module = just_tk TK.K_MODULE
 let tk_import = just_tk TK.K_IMPORT
@@ -480,7 +480,7 @@ and     apat () =
         <|> HSY.ap_all *<$> just_tk TK.K_WILDCARD
           <|> HSY.ap_paren *<$> parened ~$pat
             <|> HSY.ap_tuple *<$> parened ~$comma_patl_2
-              <|> HSY.ap_list *<$> parened ~$comma_patl_1
+              <|> HSY.ap_list *<$> bracketed ~$comma_patl_1
                 <|> HSY.ap_irr *<$> just_tk TK.KS_TILDE **> ~$apat
  
 (* fpat 	→ 	qvar = pat      *)
@@ -815,40 +815,43 @@ let module_ =
 
 let drop_any    = pred_tk "drop_any" (fun _ -> true)
 
-let test_any : (TK.t, TK.t) parser = any
+let test_any : TK.t parser = any
 
-let test_any2 : (TK.t, TK.t) parser = any **> any
-let test_any3 : (TK.t, TK.t) parser = any **> any **> any
-let test_any4 : (TK.t, TK.t) parser = any **> any **> any **> any
-let test_any5 : (TK.t, TK.t) parser = any **> any **> any **> any **> any
+let test_any2 : TK.t parser = any **> any
+let test_any3 : TK.t parser = any **> any **> any
+let test_any4 : TK.t parser = any **> any **> any **> any
+let test_any5 : TK.t parser = any **> any **> any **> any **> any
 
-let test_anys : (TK.t, TK.type_ list * TK.region) parser = some' (any)
+let test_anys : (TK.type_ list * TK.region) parser = some' (any)
 
 let test_id = drop_any *>
   some (qvar <|> gconsym <|> qconop <|> qvarop)
 
 (*  *)
-let test_decl : (TK.t, HSY.infexp HSY.decl * TK.region) parser =
+let test_decl : (HSY.infexp HSY.decl * TK.region) parser =
   ~$decl
 
-let test_rhs : (TK.t, HSY.infexp HSY.rhs * TK.region) parser =
+let test_funlhs : (HSY.funlhs * TK.region) parser =
+  ~$funlhs
+
+let test_rhs : (HSY.infexp HSY.rhs * TK.region) parser =
   ~$rhs
 
-let test_exp : (TK.t, HSY.infexp HSY.exp * TK.region) parser =
+let test_exp : (HSY.infexp HSY.exp * TK.region) parser =
   ~$exp
 
-let test_lexp : (TK.t, HSY.infexp HSY.lexp * TK.region) parser =
+let test_lexp : (HSY.infexp HSY.lexp * TK.region) parser =
   ~$lexp
 
-let test_type : (TK.t, HSY.type_ * TK.region) parser =
+let test_type : (HSY.type_ * TK.region) parser =
   ~$type_
 
-let test_apat : (TK.t, HSY.pat HSY.apat * TK.region) parser =
+let test_apat : (HSY.pat HSY.apat * TK.region) parser =
   ~$apat
 
 let test_opt_where_decls = ~$opt_where_decls
 
-let test_decls : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
+let test_decls : (HSY.infexp HSY.decls * TK.region) parser =
   ~$decls
 
 let test_impdecls_semi = impdecls **< semi
@@ -864,7 +867,7 @@ let test_lbr_imptop =
 let test_lbr_imptop_rbr =
   test_lbr_imptop **< r_brace
 
-let test_decls_cont : (TK.t, HSY.infexp HSY.decls * TK.region) parser =
+let test_decls_cont : (HSY.infexp HSY.decls * TK.region) parser =
   separated ~$decl semi
 
 let test_bid = braced (qvar <|> gconsym <|> qconop <|> qvarop)

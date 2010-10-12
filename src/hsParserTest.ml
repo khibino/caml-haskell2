@@ -1,6 +1,6 @@
 
-(* module Combinator = Simple.Combinator *)
-module Combinator = Simple.DebugCombinator
+module Combinator = Simple.Combinator(Token)
+(* module Combinator = Simple.DebugCombinator(Token) *)
 open Combinator
 
 module P = HsParser
@@ -81,7 +81,19 @@ let s_opt_where s = parse_str_raw_as_main s P.test_opt_where_decls
 let s_opt_where0 () = s_opt_where
   "where { chShow [x] = x; chShow x = read x }"
 
+let s_apat s = parse_str_raw_as_main s P.test_apat
+
+let s_apat0 () = s_apat "[x]"
+
+let s_funlhs s = parse_str_raw_as_main s P.test_funlhs
+
+let s_funlhs0 () = s_funlhs "g [x]"
+
 let s_decl s = parse_str_raw_as_main s P.test_decl
+
+let s_decl0 () = s_decl "g [x] = x"
+let s_decl1 () = s_decl "chShow [x] = x"
+let s_decl2 () = s_decl "chShow x = read x"
 
 let s_topdecl s = parse_str_raw_as_main s P.topdecl
 

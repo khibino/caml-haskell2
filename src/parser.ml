@@ -1,25 +1,26 @@
 (*  *)
 
 
-module type BASIC_OP2 =
+module type BASIC_OP2  =
 sig
-  type ('tk) tklist
-  type ('tk, 'e) parser
-  type ('tk, 'e) result
+  type token
+  type 'tk tklist
+  type 'e parser
+  type 'e result
 
-  val bind    : ('tk, 'e0) parser -> ('e0 -> ('tk, 'e1) parser) -> ('tk, 'e1) parser
-  val return  : 'e -> ('tk, 'e) parser
-  val mzero    : ('tk, 'e) parser
-  val any      : ('tk, 'tk) parser
-  val mplus   : ('tk, 'e) parser -> ('tk, 'e) parser -> ('tk, 'e) parser
-  val and_parser : ('tk, 'e) parser -> ('tk, unit) parser
-  val not_parser : ('tk, 'e) parser -> ('tk, unit) parser
-  val satisfy : string -> ('tk -> bool) -> ('tk, 'tk) parser
-  val match_or_shift : ('tk, 'tk) parser -> ('tk, 'tk) parser
+  val bind    : 'e0 parser -> ('e0 -> 'e1 parser) -> 'e1 parser
+  val return  : 'e -> 'e parser
+  val mzero    : 'e parser
+  val any      : token parser
+  val mplus   : 'e parser -> 'e parser -> 'e parser
+  val and_parser : 'e parser -> unit parser
+  val not_parser : 'e parser -> unit parser
+  val satisfy : string -> (token -> bool) -> token parser
+  val match_or_shift : token parser -> token parser
 
-  val tokens  :  (unit -> 'a) -> ('a) tklist
+  val tokens  :  (unit -> token) -> token tklist
 
-  val run     : ('tk, 'e) parser -> ('tk) tklist -> ('tk, 'e) result
+  val run     : 'e parser -> token tklist -> 'e result
 end
 
 module type EAGER_BASIC_OP2 =
@@ -34,13 +35,15 @@ end
 
 module Eager2Lazy2 (EOp : EAGER_BASIC_OP2) : LAZY_BASIC_OP2
   (* Exporting type implement. *)
-  with type ('tk) tklist = ('tk) EOp.tklist
-  and  type ('tk, 'e) parser = ('tk, 'e) EOp.parser Lazy.t
-  and  type ('tk, 'e) result = ('tk, 'e) EOp.result  =
+  with type token = EOp.token
+  and  type 'tk tklist = 'tk EOp.tklist
+  and  type 'e parser = 'e EOp.parser Lazy.t
+  and  type 'e result = 'e EOp.result  =
 struct
-  type ('tk) tklist = ('tk) EOp.tklist
-  type ('tk, 'e) parser = ('tk, 'e) EOp.parser Lazy.t (* may change to ('tk, 'e Lazy.t) EOp.parser Lazy.t *)
-  type ('tk, 'e) result = ('tk, 'e) EOp.result
+  type token = EOp.token
+  type 'tk tklist = 'tk EOp.tklist
+  type 'e parser =  'e EOp.parser Lazy.t (* may change to ('tk, 'e Lazy.t) EOp.parser Lazy.t *)
+  type 'e result = 'e EOp.result
 
   let force = Lazy.force
 
@@ -62,77 +65,77 @@ end
 
 module type COMBINATOR2 =
 sig
-  type ('tk) tklist
-  type ('tk, 'e) parser
-  type ('tk, 'e) uparser
-  type ('tk, 'e) result
+  type token
+  type 'tk tklist
+  type 'e parser
+  type 'e result
 
   val force : 'a Lazy.t -> 'a
 
-  val bind    : ('tk, 'e0) parser -> ('e0 -> ('tk, 'e1) parser) -> ('tk, 'e1) parser
-  val return  : 'e -> ('tk, 'e) parser
-  val mzero   : ('tk, 'e) parser
-  val mplus   : ('tk, 'e) parser -> ('tk, 'e) parser -> ('tk, 'e) parser
-  val any     : ('tk, 'tk) parser
-  val satisfy : string -> ('tk -> bool) -> ('tk, 'tk) parser
-  val match_or_shift : ('tk, 'tk) parser -> ('tk, 'tk) parser
+  val bind    : 'e0 parser -> ('e0 -> 'e1 parser) -> 'e1 parser
+  val return  : 'e -> 'e parser
+  val mzero   : 'e parser
+  val mplus   : 'e parser -> 'e parser -> 'e parser
+  val any     : token parser
+  val satisfy : string -> (token -> bool) -> token parser
+  val match_or_shift : token parser -> token parser
 
-  val (>>=)  : ('tk, 'e0) parser -> ('e0 -> ('tk, 'e1) parser) -> ('tk, 'e1) parser
-  val (>>)   : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e1) parser
+  val (>>=)  : 'e0 parser -> ('e0 -> 'e1 parser) -> 'e1 parser
+  val (>>)   : 'e0 parser -> 'e1 parser -> 'e1 parser
 
-  val (<|>)  : ('tk, 'e) parser -> ('tk, 'e) parser -> ('tk, 'e) parser
-  val pure   : 'e -> ('tk, 'e) parser
+  val (<|>)  : 'e parser -> 'e parser -> 'e parser
+  val pure   : 'e -> 'e parser
 
-  val lift_a : ('e0 -> 'e1) -> ('tk, 'e0) parser -> ('tk, 'e1) parser
-  val (<$>)  : ('e0 -> 'e1) -> ('tk, 'e0) parser -> ('tk, 'e1) parser
-  val ( *<$> )  : ('e0 -> 'e1) -> ('tk, 'e0) parser -> ('tk, 'e1) parser
+  val lift_a : ('e0 -> 'e1) -> 'e0 parser -> 'e1 parser
+  val (<$>)  : ('e0 -> 'e1) -> 'e0 parser -> 'e1 parser
+  val ( *<$> )  : ('e0 -> 'e1) -> 'e0 parser -> 'e1 parser
 
-  val and_parser : ('tk, 'e) parser -> ('tk, unit) parser
-  val (~&)       : ('tk, 'e) parser -> ('tk, unit) parser
-  val not_parser : ('tk, 'e) parser -> ('tk, unit) parser
-  val (~!)       : ('tk, 'e) parser -> ('tk, unit) parser
+  val and_parser : 'e parser -> unit parser
+  val (~&)       : 'e parser -> unit parser
+  val not_parser : 'e parser -> unit parser
+  val (~!)       : 'e parser -> unit parser
 
-  val call_parser : (unit -> ('tk, 'e) parser) -> ('tk, 'e) parser
-  val (~$)        : (unit -> ('tk, 'e) parser) -> ('tk, 'e) parser
+  val call_parser : (unit -> 'e parser) -> 'e parser
+  val (~$)        : (unit -> 'e parser) -> 'e parser
 
-  val ap    : ('tk, 'e0 -> 'e1) parser -> ('tk, 'e0) parser -> ('tk, 'e1) parser
-  val (<*>) : ('tk, 'e0 -> 'e1) parser -> ('tk, 'e0) parser -> ('tk, 'e1) parser
-  val ( *<*> ) : ('tk, 'e0 -> 'e1) parser -> ('tk, 'e0) parser -> ('tk, 'e1) parser
+  val ap    : ('e0 -> 'e1) parser -> 'e0 parser -> 'e1 parser
+  val (<*>) : ('e0 -> 'e1) parser -> 'e0 parser -> 'e1 parser
+  val ( *<*> ) : ('e0 -> 'e1) parser -> 'e0 parser -> 'e1 parser
 
-  val ibind  : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e1) parser
-  val ( *> ) : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e1) parser
-  val ( **> ) : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e1) parser
+  val ibind  : 'e0 parser -> 'e1 parser -> 'e1 parser
+  val ( *> ) : 'e0 parser -> 'e1 parser -> 'e1 parser
+  val ( **> ) : 'e0 parser -> 'e1 parser -> 'e1 parser
 
-  val skip   : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e0) parser
-  val ( <* ) : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e0) parser
-  val ( **< ) : ('tk, 'e0) parser -> ('tk, 'e1) parser -> ('tk, 'e0) parser
+  val skip   : 'e0 parser -> 'e1 parser -> 'e0 parser
+  val ( <* ) : 'e0 parser -> 'e1 parser -> 'e0 parser
+  val ( **< ) : 'e0 parser -> 'e1 parser -> 'e0 parser
 
-  val some   : ('tk, 'e) parser -> ('tk, 'e list) parser
-  val many   : ('tk, 'e) parser -> ('tk, 'e list) parser
+  val some   : 'e parser -> 'e list parser
+  val many   : 'e parser -> 'e list parser
 
-  val optional : ('tk, 'e) parser -> ('tk, 'e option) parser
-  val (~?)     : ('tk, 'e) parser -> ('tk, 'e option) parser
+  val optional : 'e parser -> 'e option parser
+  val (~?)     : 'e parser -> 'e option parser
 
-  val pred : string -> ('tk -> bool) -> ('tk, 'tk) parser
-  val just : string -> 'tk -> ('tk, 'tk) parser
-  val untag : string -> ('tk -> 'e option) -> ('tk, 'e) parser
+  val pred : string -> (token -> bool) -> token parser
+  val just : string -> token -> token parser
+  val untag : string -> (token -> 'e option) -> 'e parser
 
-  val tokens : (unit -> 'a) -> ('a) tklist
+  val tokens : (unit -> token) -> token tklist
 
-  val run : ('tk, 'e) parser -> ('tk) tklist -> ('tk, 'e) result
+  val run : 'e parser -> token tklist -> 'e result
 end
 
 module Combinator2ByLazy (LOp : LAZY_BASIC_OP2) : COMBINATOR2
   (* Exporting type implement. *)
-  with type ('tk) tklist = ('tk) LOp.tklist
-  and  type ('tk, 'e) parser = ('tk, 'e) LOp.parser
-  and  type ('tk, 'e) uparser = ('tk, 'e) LOp.parser
-  and  type ('tk, 'e) result = ('tk, 'e) LOp.result  =
+  with type token = LOp.token
+  and  type 'tk tklist = 'tk LOp.tklist
+  and  type 'e parser = 'e LOp.parser
+  and  type 'e result = 'e LOp.result  =
 struct
+  type token = LOp.token
   type ('tk) tklist = ('tk) LOp.tklist
-  type ('tk, 'e) parser = ('tk, 'e) LOp.parser
-  type ('tk, 'e) uparser = ('tk, 'e) LOp.parser
-  type ('tk, 'e) result = ('tk, 'e) LOp.result
+  type 'e parser = 'e LOp.parser
+  type 'e result = 'e LOp.result
 
   let force = Lazy.force
 
@@ -212,10 +215,10 @@ struct
 end
 
 module Combinator2 (EOp : EAGER_BASIC_OP2) : COMBINATOR2
-  with type ('tk) tklist = ('tk) Eager2Lazy2(EOp).tklist
-  and  type ('tk, 'e) parser = ('tk, 'e) Eager2Lazy2(EOp).parser
-  and  type ('tk, 'e) uparser = ('tk, 'e) Eager2Lazy2(EOp).parser
-  and  type ('tk, 'e) result = ('tk, 'e) Eager2Lazy2(EOp).result  =
+  with type token = Eager2Lazy2(EOp).token
+  and  type 'tk tklist = 'tk Eager2Lazy2(EOp).tklist
+  and  type 'e parser = 'e Eager2Lazy2(EOp).parser
+  and  type 'e result = 'e Eager2Lazy2(EOp).result  =
 struct
   module LOp = Eager2Lazy2(EOp)
 
