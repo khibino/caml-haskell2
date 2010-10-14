@@ -16,15 +16,15 @@ module ZL = LazyList
 module Types =
 struct
   type 'tk tklist = 'tk ZL.forest_t
-  type ('tk, 'e) parsed = ('e * 'tk tklist) option
-  type ('tk, 'e) parser = 'tk tklist -> ('tk, 'e) parsed
-  type ('tk, 'e) result = ('tk, 'e) parsed
+  type ('tk, 'e) result = ('e * 'tk tklist) option
+  type ('tk, 'e) parser = 'tk tklist -> ('tk, 'e) result
 end
 
 module Driver(Tk : TOKEN) : DRIVER
   with type token = Tk.t
   and  type 'tk tklist = 'tk Types.tklist
-  and  type 'e result = (Tk.t, 'e) Types.parsed
+  and  type 'e result = (Tk.t, 'e) Types.result
+  and  type 'e parser = (Tk.t, 'e) Types.parser
          =
 struct
 
@@ -152,8 +152,8 @@ struct
 
   type token = Tk.t
   type 'tk tklist = 'tk Types.tklist
-  type 'e parser = token tklist -> (token, 'e) Types.parsed * token syntax_match
   type 'e result = (token, 'e) Types.result * token syntax_match
+  type 'e parser = token tklist -> 'e result
 
   let bind 
       : 'e0 parser -> ('e0 -> 'e1 parser) ->
@@ -236,3 +236,5 @@ struct
 end
 
 module DebugCombinator(Tk : TOKEN) = Parser.Combinator2(DebugInfo(Tk))
+(*
+*)
