@@ -453,10 +453,10 @@ let rec pat () =
 (* 	| 	- (integer | float)     	(negative literal) *)
 (* 	| 	gcon apat1 … apatk     	(arity gcon  =  k, k ≥ 1) *)
 and     lpat () =
-  HSY.lp_apat *<$> ~$apat
-  <|> minus **> (HSY.lp_neg_int *<$> integer
-                               <|> HSY.lp_neg_float *<$> float)
-    <|> HSY.lp_gcon *<$> gcon *<*> l1_some ~$apat
+  HSY.lp_gcon *<$> gcon *<*> l1_some ~$apat
+  <|> HSY.lp_apat *<$> ~$apat
+    <|> minus **> (HSY.lp_neg_int *<$> integer
+                   <|> HSY.lp_neg_float *<$> float)
 
 (* apat 	→ 	var [ @ apat]     	(as pattern) *)
 (* 	| 	gcon     	(arity gcon  =  0) *)

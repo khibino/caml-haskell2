@@ -152,8 +152,8 @@ let s_exports () = parse_str "( foo, Foo(..), Bar, Foo'(foo', bar'), module Bar,
 
 let s_import s = parse_str s P.import
 let s_import0 () = s_import "(<|>)"
-let s_import1 () = s_import "(Foo (..))"
-let s_import2 () = s_import "(Foo (bar, bar0))"
+let s_import1 () = s_import "Foo (..)"
+let s_import2 () = s_import "Foo (bar, bar0)"
 
 let s_impspec s = parse_str s P.impspec
 
@@ -243,11 +243,7 @@ let s_module_raw01 () = s_module_raw "{ foo = 1 }"
 
 let s_module0 () = s_module ""
 let s_module1 () = s_module "foo = 1"
-(* let s_module1 () = s_module "foo 0 0 = 1\n" *)
 let s_module2 () = s_module "foo 0 0 = 1\nfoo x = \\ y -> x + y\n"
-
-(*let s_any s = parse_str_as_main false s P.test_any
-let s_any1 () = s_any "foo = 1"*)
 
 let s_anys s = parse_str_as_main false s P.test_anys
 let s_anys1 () = s_anys "foo = 1"
@@ -313,12 +309,44 @@ let all_batch () =
   batch_str P.test_opt_where_decls
     ["where { chShow [x] = x; chShow x = read x }"];
   batch_str P.test_apat
-    ["[x]";
-     "((x, y), z)"];
+    ["[x]"; "((x, y), z)"];
   batch_str P.test_funlhs
     ["g [x]"];
+  batch_str (P.pat ())
+    ["x:&xs"; "Foo x y"];
   batch_str P.test_decl
     ["g [x] = x";
      "chShow [x] = x";
-     "chShow x = read x"]
-    
+     "chShow x = read x"];
+  batch_str P.test_type
+    ["(Either String a, b -> c)"];
+  batch_str P.constrs
+    ["Foo !a b !c | Bar"];
+  batch_str P.exports
+    ["( foo, Foo(..), Bar, Foo'(foo', bar'), module Bar, )"];
+  batch_str P.import
+    ["(<|>)"; "Foo (..)"; "Foo (bar, bar0)"];
+  batch_str P.impspec
+    ["( foo, Foo(..), Bar, Foo'(foo', bar'), ) ";
+     "hiding ( foo, Foo(..), Bar, Foo'(foo', bar'), ) ";
+     "hiding (foo)"; "hiding ()";
+     "hiding ((<|>))"; "hiding ( many )";
+     "hiding ((<|>), many, State, label)"];
+  batch_str P.impdecl
+    ["import qualified FooBar as BarFoo ( foo, Foo(..), Bar, Foo'(foo', bar'), ) ";
+     "import FooBar ( foo, Foo(..), Bar, Foo'(foo', bar'), ) ";
+     "import Text.Parsec hiding ((<|>), many, State, label)"];
+  batch_str P.impdecls
+    ["import qualified FooBar as BarFoo ( foo, Foo(..), Bar, Foo'(foo', bar'), )";
+     "import Foo0"; "import Foo0 ; import Foo1"];
+  batch_str P.topdecls
+    ["foo 0 0 = 1 ; bar x = \\ y -> x + y";
+     ""; "foo 0 0 = 1"; "foo 0 0 = 1 ; bar 1 1 = 2"];
+  batch_str P.body
+    ["{ import qualified FooBar as BarFoo ( foo, Foo(..), Bar, Foo'(foo', bar'), ) ; foo 0 0 = 1 ; foo x = \\ y -> x + y }";
+     "{ }"; "{ import Foo0 }"; "{ foo = 1 }"; "{ foo 0 0 = 1 }";
+     "{ import Foo0 ; import Foo1 }"; "{ import Foo0 ; foo 0 0 = 1 }"; "{ foo 0 0 = 1 ; bar 1 1 = 2 }";
+     "{ foo 0 0 = 1 ; bar x = \\ y -> x + y }"; "{ import Foo0 ; import Foo1 ; foo 0 0 = 1 }"; "{ import Foo0 ; foo 0 0 = 1 ; bar 1 1 = 2 }";
+     "{ foo 0 0 = 1 ; foo x = \\ y -> x + y ; main = print (foo 0 0) }"];
+  batch_str P.module_
+    ["{ foo = 1 }"];
