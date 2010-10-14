@@ -3,7 +3,7 @@ module SYM = Symbol
 module TK  = Token
 module HSY = HsSyntax
 
-let debug = true
+let debug = false
 
 let errors : string Queue.t = Queue.create ()
 

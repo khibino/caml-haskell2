@@ -161,7 +161,7 @@ struct
   let and_parser = LOp.and_parser
   let (~&) = and_parser
 
-  let not_parser = LOp.and_parser
+  let not_parser = LOp.not_parser
   let (~!) = not_parser
 
   let call_parser f =

@@ -583,7 +583,7 @@ and     aexp_without_lu () =
   HSY.lbl_cons *<$> qcon *<*> braced (separated ~$fbind comma)
   (* <|> (HSY.lbl_upd *<$> (~! qcon **> ~$aexp) *<*> braced (l1_separated (~$fbind) comma)) *)
   (* Simpler syntax must be tried later *)
-  (* より単純な文法は後にチェックしなければならない *)
+  (* 他の文法の prefix になっている文法は後にチェックしなければならない *)
   (* * gcon は labeled construction の qcon にマッチしてしまう *)
   (* * var は labeled construction の qcon にマッチしてしまう
        が そもそも左再帰なので除去するために labeled update だけ分けた   *)
