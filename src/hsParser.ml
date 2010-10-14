@@ -854,23 +854,4 @@ let test_opt_where_decls = ~$opt_where_decls
 let test_decls : (HSY.infexp HSY.decls * TK.region) parser =
   ~$decls
 
-let test_impdecls_semi = impdecls **< semi
-
-let test_imptop =
-  HSY.body *<$> impdecls *<*> semi **> topdecls
-  <|> HSY.body_no_top *<$> impdecls
-    <|> HSY.body_no_imp *<$> topdecls
-
-let test_lbr_imptop =
-  l_brace **> test_imptop
-
-let test_lbr_imptop_rbr =
-  test_lbr_imptop **< r_brace
-
-let test_decls_cont : (HSY.infexp HSY.decls * TK.region) parser =
-  separated ~$decl semi
-
-let test_bid = braced (qvar <|> gconsym <|> qconop <|> qvarop)
-
-let test_bbody = braced body
-
+(* *)
