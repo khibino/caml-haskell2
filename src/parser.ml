@@ -5,8 +5,9 @@ module type BASIC_OP2  =
 sig
   type token
   type 'tk tklist
-  type 'e parser
   type 'e result
+
+  type 'e parser = token tklist -> 'e result
 
   val bind    : 'e0 parser -> ('e0 -> 'e1 parser) -> 'e1 parser
   val return  : 'e -> 'e parser
@@ -37,16 +38,37 @@ module Eager2Lazy2 (EOp : EAGER_BASIC_OP2) : LAZY_BASIC_OP2
   (* Exporting type implement. *)
   with type token = EOp.token
   and  type 'tk tklist = 'tk EOp.tklist
-  and  type 'e parser = 'e EOp.parser Lazy.t
-  and  type 'e result = 'e EOp.result  =
+  and  type 'e result = 'e EOp.result Lazy.t =
 struct
   type token = EOp.token
   type 'tk tklist = 'tk EOp.tklist
-  type 'e parser =  'e EOp.parser Lazy.t (* may change to ('tk, 'e Lazy.t) EOp.parser Lazy.t *)
-  type 'e result = 'e EOp.result
+  type 'e result = 'e EOp.result Lazy.t
+
+  type 'e parser = token tklist -> 'e result
 
   let force = Lazy.force
 
+  let l2e p l = force (p l)
+
+  let bind  a b l  = lazy (EOp.bind (l2e a) (fun x -> l2e (b x)) l)
+  let return a' l  = lazy (EOp.return a' l)
+
+  let mzero  l     = lazy (EOp.mzero l)
+  let any    l     = lazy (EOp.any l)
+
+  let mplus a b l  = lazy (EOp.mplus (l2e a) (l2e b) l)
+
+  let and_parser a l = lazy (EOp.and_parser (l2e a) l)
+  let not_parser a l = lazy (EOp.not_parser (l2e a) l)
+
+  let satisfy name p l = lazy (EOp.satisfy name p l)
+  let match_or_shift a l = lazy (EOp.match_or_shift (l2e a) l)
+
+  let tokens = EOp.tokens
+
+  let run    p l = p l
+
+(*
   let bind    a b = lazy (EOp.bind (force a) (fun x -> force (b x)))
   let return  a'  = lazy (EOp.return a')
 
@@ -60,7 +82,9 @@ struct
 
   let tokens = EOp.tokens
 
-  let run     p l = EOp.run (force p) l
+  let run    p l = lazy (EOp.run (force p) l)
+*)
+
 end
 
 module type COMBINATOR2 =

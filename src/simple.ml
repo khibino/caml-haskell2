@@ -116,6 +116,7 @@ end
 
 module Combinator(Tk : TOKEN) = Parser.Combinator2(Driver(Tk))
 
+(*
 module DebugInfo(Tk : TOKEN) : DRIVER
   with type token = Tk.t
   and  type 'tk tklist = 'tk Types.tklist
@@ -236,5 +237,4 @@ struct
 end
 
 module DebugCombinator(Tk : TOKEN) = Parser.Combinator2(DebugInfo(Tk))
-(*
 *)

@@ -48,8 +48,13 @@ type error = string option
 type test_result = ((int * int) * (string * error) list)
 
 let empty_result : test_result = ((0, 0), [])
+let success_p : test_result -> bool =
+  function
+    | ((x, y), _) when x == y -> true
+    | _                       -> false
+
 let show_result : test_result -> string =
-  fun ((succ,total), info) ->
+  fun (((succ,total), info) as report) ->
     let (n, msg) = 
       List.fold_left
         (fun (i, res) (input, err) -> 
@@ -60,13 +65,15 @@ let show_result : test_result -> string =
         )
         (0, "")
         (List.rev info)
-    in msg ^ F.sprintf ". %d/%d - success rate\n" succ total
+    in msg
+    ^ F.sprintf ". %d/%d - success rate%s\n"
+      succ total (if success_p report then " - all test succeeded" else "")
 
 let batch_str seq_parser strl =
   let report =
     List.fold_left
       (fun ((succ, total), errs) str ->
-        match parse_str str seq_parser with
+        match Lazy.force (parse_str str seq_parser) with
           | Some (_, rest) ->
             (match ZL.peek rest with
               | None -> ((succ + 1, total + 1), (str, None) :: errs)
@@ -82,7 +89,9 @@ let batch_str seq_parser strl =
           | None   -> ((succ, total + 1), (str, Some "failed.") :: errs))
       empty_result
       strl
-  in print_string (show_result report)
+  in
+  let () = print_string (show_result report) in
+  report
 
 let ch_id () = parse_stdin P.test_id
 let ch_exp () = parse_stdin P.test_exp
@@ -155,90 +164,99 @@ let file hs =
     P.module_
 
 let all_batch () =
-  batch_str P.var
-    ["foo"; "(<|>)"];
-  batch_str P.deriving
-    ["deriving Show"; "deriving (Eq, Ord, Num)"];
-  batch_str (P.braced_fbind_list_1 ())
-    ["{ Foo.a = y, Foo.b = z }"];
-  batch_str (~$P.aexp_without_lu)
-    ["x"];
-  batch_str (~!P.qcon **> ~$P.aexp_without_lu)
-    ["x"];
-  batch_str (some ~$P.braced_fbind_list_1)
-    ["{ Foo.a = y, Foo.b = z }"];
-  batch_str (P.parened (~!P.qcon **> ~$P.aexp_without_lu  **> P.some' ~$P.braced_fbind_list_1))
-    ["(x { Foo.a = y, Foo.b = z })"];
-  batch_str (P.parened (P.aexp ()))
-    ["(x { Foo.a = y, Foo.b = z })"];
-  batch_str (P.parened (P.fexp ()))
-    ["(x { Foo.a = y, Foo.b = z })"];
-  batch_str (P.parened (P.lexp ()))
-    ["(x { Foo.a = y, Foo.b = z })"];
-  batch_str (P.parened (P.infixexp ()))
-    ["(x { Foo.a = y, Foo.b = z })"];
-  batch_str (P.parened (P.exp ()))
-    ["(x { Foo.a = y, Foo.b = z })"];
-  batch_str (P.aexp_without_lu ())
-    ["(x { Foo.a = y, Foo.b = z })"];
-  batch_str (P.aexp ())
-    ["(x { Foo.a = y, Foo.b = z })"];
-  batch_str P.test_lexp
-    [];
-  batch_str P.test_exp
-    ["read `extR` (id :: String -> String) `extR` chShow";
-     "\\ (1:xs,'a':ys) -> (xs, ys)";
-     "[1, 3 .. 11]";
-     "[(x, y) | x <- [1,2,3], y <- ['a','b'] ]";
-     "x { Foo.a = y, Foo.b = z } { Foo.c = p, Foo.d = q }";
-     "(x { Foo.a = y, Foo.b = z })";
-     "(x)";
-     "(x { a = b })";
-     "do { let { x = 1; y = 2}; 1 }";
-     "p :: (Eq (f b), Functor f) => (a -> b) -> f a -> f b -> Bool"];
-  batch_str P.test_rhs
-    ["= read `extR` (id :: String -> String) `extR` chShow where { chShow [x] = x; chShow x = read x }"];
-  batch_str P.test_opt_where_decls
-    ["where { chShow [x] = x; chShow x = read x }"];
-  batch_str P.test_apat
-    ["[x]"; "((x, y), z)"];
-  batch_str P.test_funlhs
-    ["g [x]"];
-  batch_str (P.pat ())
-    ["x:&xs"; "Foo x y"];
-  batch_str P.test_decl
-    ["g [x] = x";
-     "chShow [x] = x";
-     "chShow x = read x"];
-  batch_str P.test_type
-    ["(Either String a, b -> c)"];
-  batch_str P.constrs
-    ["Foo !a b !c | Bar"];
-  batch_str P.exports
-    ["( foo, Foo(..), Bar, Foo'(foo', bar'), module Bar, )"];
-  batch_str P.import
-    ["(<|>)"; "Foo (..)"; "Foo (bar, bar0)"];
-  batch_str P.impspec
-    ["( foo, Foo(..), Bar, Foo'(foo', bar'), ) ";
-     "hiding ( foo, Foo(..), Bar, Foo'(foo', bar'), ) ";
-     "hiding (foo)"; "hiding ()";
-     "hiding ((<|>))"; "hiding ( many )";
-     "hiding ((<|>), many, State, label)"];
-  batch_str P.impdecl
-    ["import qualified FooBar as BarFoo ( foo, Foo(..), Bar, Foo'(foo', bar'), ) ";
-     "import FooBar ( foo, Foo(..), Bar, Foo'(foo', bar'), ) ";
-     "import Text.Parsec hiding ((<|>), many, State, label)"];
-  batch_str P.impdecls
-    ["import qualified FooBar as BarFoo ( foo, Foo(..), Bar, Foo'(foo', bar'), )";
-     "import Foo0"; "import Foo0 ; import Foo1"];
-  batch_str P.topdecls
-    ["foo 0 0 = 1 ; bar x = \\ y -> x + y";
-     ""; "foo 0 0 = 1"; "foo 0 0 = 1 ; bar 1 1 = 2"];
-  batch_str P.body
-    ["{ import qualified FooBar as BarFoo ( foo, Foo(..), Bar, Foo'(foo', bar'), ) ; foo 0 0 = 1 ; foo x = \\ y -> x + y }";
-     "{ }"; "{ import Foo0 }"; "{ foo = 1 }"; "{ foo 0 0 = 1 }";
-     "{ import Foo0 ; import Foo1 }"; "{ import Foo0 ; foo 0 0 = 1 }"; "{ foo 0 0 = 1 ; bar 1 1 = 2 }";
-     "{ foo 0 0 = 1 ; bar x = \\ y -> x + y }"; "{ import Foo0 ; import Foo1 ; foo 0 0 = 1 }"; "{ import Foo0 ; foo 0 0 = 1 ; bar 1 1 = 2 }";
-     "{ foo 0 0 = 1 ; foo x = \\ y -> x + y ; main = print (foo 0 0) }"];
-  batch_str P.module_
-    ["{ foo = 1 }"];
+  let all =
+    [batch_str P.var
+        ["foo"; "(<|>)"];
+     batch_str P.deriving
+       ["deriving Show"; "deriving (Eq, Ord, Num)"];
+     batch_str (P.braced_fbind_list_1 ())
+       ["{ Foo.a = y, Foo.b = z }"];
+     batch_str (~$P.aexp_without_lu)
+       ["x"];
+     batch_str (~!P.qcon **> ~$P.aexp_without_lu)
+       ["x"];
+     batch_str (some ~$P.braced_fbind_list_1)
+       ["{ Foo.a = y, Foo.b = z }"];
+     batch_str (P.parened (~!P.qcon **> ~$P.aexp_without_lu  **> P.some' ~$P.braced_fbind_list_1))
+       ["(x { Foo.a = y, Foo.b = z })"];
+     batch_str (P.parened (P.aexp ()))
+       ["(x { Foo.a = y, Foo.b = z })"];
+     batch_str (P.parened (P.fexp ()))
+       ["(x { Foo.a = y, Foo.b = z })"];
+     batch_str (P.parened (P.lexp ()))
+       ["(x { Foo.a = y, Foo.b = z })"];
+     batch_str (P.parened (P.infixexp ()))
+       ["(x { Foo.a = y, Foo.b = z })"];
+     batch_str (P.parened (P.exp ()))
+       ["(x { Foo.a = y, Foo.b = z })"];
+     batch_str (P.aexp_without_lu ())
+       ["(x { Foo.a = y, Foo.b = z })"];
+     batch_str (P.aexp ())
+       ["(x { Foo.a = y, Foo.b = z })"];
+     batch_str P.test_lexp
+       [];
+     batch_str P.test_exp
+       ["read `extR` (id :: String -> String) `extR` chShow";
+        "\\ (1:xs,'a':ys) -> (xs, ys)";
+        "[1, 3 .. 11]";
+        "[(x, y) | x <- [1,2,3], y <- ['a','b'] ]";
+        "x { Foo.a = y, Foo.b = z } { Foo.c = p, Foo.d = q }";
+        "(x { Foo.a = y, Foo.b = z })";
+        "(x)";
+        "(x { a = b })";
+        "do { let { x = 1; y = 2}; 1 }";
+        "p :: (Eq (f b), Functor f) => (a -> b) -> f a -> f b -> Bool"];
+     batch_str P.test_rhs
+       ["= read `extR` (id :: String -> String) `extR` chShow where { chShow [x] = x; chShow x = read x }"];
+     batch_str P.test_opt_where_decls
+       ["where { chShow [x] = x; chShow x = read x }"];
+     batch_str P.test_apat
+       ["[x]"; "((x, y), z)"];
+     batch_str P.test_funlhs
+       ["g [x]"];
+     batch_str (P.pat ())
+       ["x:&xs"; "Foo x y"];
+     batch_str P.test_decl
+       ["g [x] = x";
+        "chShow [x] = x";
+        "chShow x = read x"];
+     batch_str P.test_type
+       ["(Either String a, b -> c)"];
+     batch_str P.constrs
+       ["Foo !a b !c | Bar"];
+     batch_str P.exports
+       ["( foo, Foo(..), Bar, Foo'(foo', bar'), module Bar, )"];
+     batch_str P.import
+       ["(<|>)"; "Foo (..)"; "Foo (bar, bar0)"];
+     batch_str P.impspec
+       ["( foo, Foo(..), Bar, Foo'(foo', bar'), ) ";
+        "hiding ( foo, Foo(..), Bar, Foo'(foo', bar'), ) ";
+        "hiding (foo)"; "hiding ()";
+        "hiding ((<|>))"; "hiding ( many )";
+        "hiding ((<|>), many, State, label)"];
+     batch_str P.impdecl
+       ["import qualified FooBar as BarFoo ( foo, Foo(..), Bar, Foo'(foo', bar'), ) ";
+        "import FooBar ( foo, Foo(..), Bar, Foo'(foo', bar'), ) ";
+        "import Text.Parsec hiding ((<|>), many, State, label)"];
+     batch_str P.impdecls
+       ["import qualified FooBar as BarFoo ( foo, Foo(..), Bar, Foo'(foo', bar'), )";
+        "import Foo0"; "import Foo0 ; import Foo1"];
+     batch_str P.topdecls
+       ["foo 0 0 = 1 ; bar x = \\ y -> x + y";
+        ""; "foo 0 0 = 1"; "foo 0 0 = 1 ; bar 1 1 = 2"];
+     batch_str P.body
+       ["{ import qualified FooBar as BarFoo ( foo, Foo(..), Bar, Foo'(foo', bar'), ) ; foo 0 0 = 1 ; foo x = \\ y -> x + y }";
+        "{ }"; "{ import Foo0 }"; "{ foo = 1 }"; "{ foo 0 0 = 1 }";
+        "{ import Foo0 ; import Foo1 }"; "{ import Foo0 ; foo 0 0 = 1 }"; "{ foo 0 0 = 1 ; bar 1 1 = 2 }";
+        "{ foo 0 0 = 1 ; bar x = \\ y -> x + y }"; "{ import Foo0 ; import Foo1 ; foo 0 0 = 1 }"; "{ import Foo0 ; foo 0 0 = 1 ; bar 1 1 = 2 }";
+        "{ foo 0 0 = 1 ; foo x = \\ y -> x + y ; main = print (foo 0 0) }"];
+     batch_str P.module_
+       ["{ foo = 1 }"]
+    ]
+  in
+  let result = List.fold_left
+    (fun res rep -> res && success_p rep)
+    true all
+  in print_endline
+  (if result then "All test succeeded."
+   else "Some test failed.")
