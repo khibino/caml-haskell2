@@ -1,8 +1,16 @@
 module type TOKEN =
 sig
   type t
+  type type_
+  type region
+
+  val cover_region : region -> region -> region
+
+  (* val type_ : t -> type_ *)
+  (* val region : t -> region *)
 
   val to_string : t -> string
+  val type_to_string : type_ -> string
 end
 
 module type DRIVER =
@@ -115,6 +123,116 @@ struct
 end
 
 module Combinator(Tk : TOKEN) = Parser.Combinator2(Driver(Tk))
+
+module T =
+struct
+  type ('tk, 'reg) tklist = ('tk * 'reg option) ZL.forest_t
+  type ('tk, 'reg, 'e) result = ('e * ('tk, 'reg) tklist) option
+  type ('tk, 'reg, 'e) parser = ('tk, 'reg) tklist -> ('tk, 'reg, 'e) result
+end
+
+module DriverWithRegion(Tk : TOKEN) : DRIVER
+  with type token = Tk.type_ 
+  and  type 'tk tklist = ('tk, Tk.region) T.tklist
+  and  type 'e result = (Tk.type_ , Tk.region, ('e * Tk.region option)) T.result
+  and  type 'e parser = (Tk.type_ , Tk.region, ('e * Tk.region option)) T.parser
+         =
+struct
+
+  type token = Tk.type_
+
+(*  * Tk.region option *)
+  type 'tk tklist = ('tk, Tk.region) T.tklist
+  type 'e parser = (token, Tk.region, ('e * Tk.region option)) T.parser
+  type 'e result = (token, Tk.region, ('e * Tk.region option)) T.result
+
+  let merge_region = function
+    | (Some a, Some b) -> Some (Tk.cover_region a b)
+    | (a, None)        -> a
+    | (None, b)        -> b
+
+  let bind : 'e0 parser -> ('e0 -> 'e1 parser) -> 'e1 parser =
+    fun ma f tfo ->
+      match ma tfo with
+        | None                -> None
+        | Some ((a, ra), tfo) -> 
+          (match f a tfo with
+            | None                -> None
+            | Some ((b, rb), tfo) -> Some ((b, merge_region (ra, rb)), tfo))
+
+  let (>>=) = bind
+
+  let return : 'e -> 'e parser =
+    fun e tfo -> Some ((e, None), tfo)
+
+  let mzero : 'e parser = fun _ -> None
+
+  let mplus : 'e parser -> 'e parser -> 'e parser =
+    fun ma mb tfo ->
+      match ma tfo with
+        | None -> mb tfo
+        | v    -> v
+
+  let and_parser : 'e parser -> unit parser =
+    fun ma tfo ->
+      match ma tfo with
+        | None   -> None
+        | Some _ -> Some (((), None), tfo)
+
+  let not_parser : 'e parser -> unit parser =
+    fun ma tfo ->
+      match ma tfo with
+        | None   -> Some (((), None), tfo)
+        | Some _ -> None
+
+  let any : token parser =
+    fun tfo ->
+      match ZL.peek tfo with
+        | None                         -> None
+        | Some (lazy (ZL.Node (node))) -> Some node
+
+  let satisfy : string -> (token -> bool) -> token parser =
+    fun name pred tfo ->
+      match ZL.peek tfo with
+        | Some (lazy (ZL.Node ((tk, _), _ as node))) when pred tk
+            -> Some node
+        | Some _ | None -> None
+
+
+  module F = Printf
+  (* マッチしなかったときに次の枝をマッチする parser に変換 *)
+  let match_or_shift : token parser -> token parser =
+    fun ma tfo ->
+      match ma tfo with
+        | None ->
+          (match ZL.next tfo with
+            | Some (_, tfo) ->
+              if true then
+                (match tfo with
+                  | lazy (ZL.Cons (lazy (ZL.Node (_, next)), _)) ->
+                    F.printf "shift invocation: next: %s\n"
+                      (ZL.foldl'
+                         (fun res tr -> res ^ " " ^ Tk.type_to_string (fst (ZL.t_peek tr)))
+                         "" next)
+                  | _ -> ());
+              ma tfo
+            | None           -> None)
+        | v    -> v
+
+(*
+  let tokens : (unit -> token) -> token tklist =
+    fun tkg ->
+      ZL.return (ZL.t_unfold
+                   ()
+                   (fun () -> (tkg (), ZL.return ())))
+*)
+
+  let run : 'e parser -> 'tk tklist -> 'e result =
+    fun p tkl -> p tkl
+
+end
+
+module CombinatorWithRegion(Tk : TOKEN) = Parser.Combinator2(DriverWithRegion(Tk))
 
 (*
 module DebugInfo(Tk : TOKEN) : DRIVER

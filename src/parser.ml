@@ -19,7 +19,7 @@ sig
   val satisfy : string -> (token -> bool) -> token parser
   val match_or_shift : token parser -> token parser
 
-  val tokens  :  (unit -> token) -> token tklist
+  (* val tokens  :  (unit -> token) -> token tklist *)
 
   val run     : 'e parser -> token tklist -> 'e result
 end
@@ -64,7 +64,7 @@ struct
   let satisfy name p l = lazy (EOp.satisfy name p l)
   let match_or_shift a l = lazy (EOp.match_or_shift (l2e a) l)
 
-  let tokens = EOp.tokens
+  (* let tokens = EOp.tokens *)
 
   let run    p l = p l
 
@@ -144,7 +144,7 @@ sig
   val just : string -> token -> token parser
   val untag : string -> (token -> 'e option) -> 'e parser
 
-  val tokens : (unit -> token) -> token tklist
+  (* val tokens : (unit -> token) -> token tklist *)
 
   val run : 'e parser -> token tklist -> 'e result
 end
@@ -233,7 +233,7 @@ struct
         | Some _ -> true
         | None   -> false)
 
-  let tokens = LOp.tokens
+  (* let tokens = LOp.tokens *)
 
   let run = LOp.run
 end

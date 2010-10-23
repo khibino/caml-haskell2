@@ -136,6 +136,9 @@ type type_ =
 
 type t = (type_ * region)
 
+(* let type_ : t -> type_ = fst *)
+(* let region : t -> region = snd *)
+
 let with_region_just v (_, reg) = (v, reg)
 let with_region : ('a -> 'b) -> ('a * region) -> ('b * region) = Data.with_snd
 
