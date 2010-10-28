@@ -209,7 +209,7 @@ let regexp graphic_common = small | large | symbol | digit | special | ':'
 let regexp graphic = graphic_common | ['"' '\'']
 let regexp any = graphic | space | tab
 
-let regexp comment = dashes ((space | tab | small | large | digit | special | [':' '"' '\'']) (any) * )? newline
+let regexp comment = dashes ((space | tab | small | large | digit | special | [':' '"' '\'']) (any) * )? newline?
 
 let regexp opencom  = "{-"
 let regexp closecom = "-}"
