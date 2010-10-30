@@ -437,7 +437,7 @@ let rec lex_haskell context =
 
 let make_lazy_list lexbuf = 
   let next_token (cxt, prev) =
-    if prev = Some (TK.EOF) then None
+    if prev = Some TK.EOF then None
     else let ((tk, _) as tkwl, cxt) = lex_haskell cxt in
          Some (tkwl, (cxt, Some tk))
   in

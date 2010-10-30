@@ -1,6 +1,6 @@
 module type TOKEN =
 sig
-  type t
+  (* type t *)
   type type_
   type region
 
@@ -9,18 +9,19 @@ sig
   (* val type_ : t -> type_ *)
   (* val region : t -> region *)
 
-  val to_string : t -> string
+  (* val to_string : t -> string *)
   val type_to_string : type_ -> string
 end
 
 module type DRIVER =
 sig
   (* type 'e parsed *)
-  include ParserOld.EAGER_BASIC_OP2
+  include Parser.EAGER_BASIC_OP2
 end
 
 module ZL = LazyList
 
+(*
 module Types =
 struct
   type 'tk tklist = 'tk ZL.forest_t
@@ -121,77 +122,88 @@ struct
     fun p tkl -> p tkl
 
 end
+*)
 
-module Combinator(Tk : TOKEN) = ParserOld.Combinator2(Driver(Tk))
+(* module Combinator(Tk : TOKEN) = Parser.Combinator2(Driver(Tk)) *)
 
 module T =
 struct
-  type ('tk, 'reg) tklist = ('tk * 'reg option) ZL.forest_t
-  type ('tk, 'reg, 'e) result = ('e * ('tk, 'reg) tklist) option
-  type ('tk, 'reg, 'e) parser = ('tk, 'reg) tklist -> ('tk, 'reg, 'e) result
+  type ('e, 'reg) exp = 'e * 'reg option
+  type ('tk, 'reg) tklist = ('tk, 'reg) exp ZL.forest_t
+  type ('tk, 'reg, 'exp) result = ('exp * ('tk, 'reg) tklist) option
+  type ('tk, 'reg, 'exp) parser = ('tk, 'reg) tklist -> ('tk, 'reg, 'exp) result
 end
 
 module DriverWithRegion(Tk : TOKEN) : DRIVER
   with type token = Tk.type_ 
   and  type 'tk tklist = ('tk, Tk.region) T.tklist
-  and  type 'e result = (Tk.type_ , Tk.region, ('e * Tk.region option)) T.result
-  and  type 'e parser = (Tk.type_ , Tk.region, ('e * Tk.region option)) T.parser
-         =
+  and  type 'e exp = ('e, Tk.region) T.exp
+  and  type 'exp result = (Tk.type_, Tk.region, 'exp) T.result
+  and  type 'exp parser = (Tk.type_, Tk.region, 'exp) T.parser
+                 =
 struct
 
   type token = Tk.type_
 
-(*  * Tk.region option *)
   type 'tk tklist = ('tk, Tk.region) T.tklist
-  type 'e parser = (token, Tk.region, ('e * Tk.region option)) T.parser
-  type 'e result = (token, Tk.region, ('e * Tk.region option)) T.result
+  type 'e exp = ('e, Tk.region) T.exp
+  type 'exp result = (Tk.type_, Tk.region, 'exp) T.result
+  type 'exp parser = (Tk.type_, Tk.region, 'exp) T.parser
 
   let merge_region = function
     | (Some a, Some b) -> Some (Tk.cover_region a b)
     | (a, None)        -> a
     | (None, b)        -> b
 
-  let bind : 'e0 parser -> ('e0 -> 'e1 parser) -> 'e1 parser =
+
+  let return' : 'e -> 'e exp = fun x -> (x, None)
+  let fmap'   : ('e0 -> 'e1) -> 'e0 exp -> 'e1 exp = Data.with_snd
+  let ap'     : ('e0 -> 'e1) exp -> 'e0 exp -> 'e1 exp =
+    fun (f, reg0) (e0, reg1) -> (f e0, merge_region (reg0, reg1))
+
+  let bind : 'e0 exp parser -> ('e0 exp -> 'e1 exp parser) -> 'e1 exp parser =
     fun ma f tfo ->
       match ma tfo with
         | None                -> None
-        | Some ((a, ra), tfo) -> 
+        | Some ((_, ra as a), tfo) -> 
           (match f a tfo with
             | None                -> None
-            | Some ((b, rb), tfo) -> Some ((b, merge_region (ra, rb)), tfo))
+            | Some ((eb, rb), tfo) -> Some ((eb, merge_region (ra, rb)), tfo))
 
   let (>>=) = bind
 
-  let return : 'e -> 'e parser =
-    fun e tfo -> Some ((e, None), tfo)
+  let return : 'e exp -> 'e exp parser = fun e tfo -> Some (e, tfo)
 
-  let mzero : 'e parser = fun _ -> None
+  let mzero : 'e exp parser = fun _ -> None
 
-  let mplus : 'e parser -> 'e parser -> 'e parser =
+  let mplus : 'e exp parser -> 'e exp parser -> 'e exp parser =
     fun ma mb tfo ->
       match ma tfo with
         | None -> mb tfo
         | v    -> v
 
-  let and_parser : 'e parser -> unit parser =
+  let and_parser : 'e exp parser -> unit exp parser =
     fun ma tfo ->
       match ma tfo with
         | None   -> None
         | Some _ -> Some (((), None), tfo)
 
-  let not_parser : 'e parser -> unit parser =
+  let not_parser : 'e exp parser -> unit exp parser =
     fun ma tfo ->
       match ma tfo with
         | None   -> Some (((), None), tfo)
         | Some _ -> None
 
-  let any : token parser =
+  let forget : 'e exp parser -> 'e exp parser =
+    fun ma -> ma >>= fun (a, _) -> return (return' a)
+
+  let any : token exp parser =
     fun tfo ->
       match ZL.peek tfo with
         | None                         -> None
         | Some (lazy (ZL.Node (node))) -> Some node
 
-  let satisfy : string -> (token -> bool) -> token parser =
+  let satisfy : string -> (token -> bool) -> token exp parser =
     fun name pred tfo ->
       match ZL.peek tfo with
         | Some (lazy (ZL.Node ((tk, _), _ as node))) when pred tk
@@ -201,7 +213,7 @@ struct
 
   module F = Printf
   (* マッチしなかったときに次の枝をマッチする parser に変換 *)
-  let match_or_shift : token parser -> token parser =
+  let match_or_shift : token exp parser -> token exp parser =
     fun ma tfo ->
       match ma tfo with
         | None ->
@@ -219,20 +231,12 @@ struct
             | None           -> None)
         | v    -> v
 
-(*
-  let tokens : (unit -> token) -> token tklist =
-    fun tkg ->
-      ZL.return (ZL.t_unfold
-                   ()
-                   (fun () -> (tkg (), ZL.return ())))
-*)
-
-  let run : 'e parser -> 'tk tklist -> 'e result =
+  let run : 'e exp parser -> token tklist -> 'e exp result =
     fun p tkl -> p tkl
 
 end
 
-module CombinatorWithRegion(Tk : TOKEN) = ParserOld.Combinator2(DriverWithRegion(Tk))
+module Combinator(Tk : TOKEN) = Parser.Combinator2(DriverWithRegion(Tk))
 
 (*
 module DebugInfo(Tk : TOKEN) : DRIVER

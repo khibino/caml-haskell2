@@ -141,6 +141,8 @@ let tree_of_lzlist l =
 let rec tmap f (lazy (Node (n, chld))) =
   lazy (Node (f n, (map (tmap f) chld)))
 
+let frmap f fr = map (tmap f) fr
+
 let rec tree_to_lzlist tr =
   unfold (return tr)
     (fun forest ->

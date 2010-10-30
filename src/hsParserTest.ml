@@ -1,6 +1,6 @@
 
-module Combinator = Simple.Combinator(Token)
-(* module Combinator = Simple.DebugCombinator(Token) *)
+
+module Combinator = ParserDriver.Combinator(Token)
 open Combinator
 
 module P = HsParser
@@ -13,7 +13,10 @@ let parse_tokens lzl raw seq_parser =
   (* let run zl = (run seq_parser zl, zl) in *)
   let parse_tokens zl = run seq_parser zl in
   parse_tokens
-    (if raw then ZL.return (ZL.tree_of_lzlist lzl)
+    (if raw then
+        ZL.frmap
+        (Data.with_fst (fun x -> Some x))
+        (ZL.return (ZL.tree_of_lzlist lzl))
      else let lzl = LO.layout lzl in
           let _ = if debug then LO.show_out lzl in
           lzl)
@@ -177,7 +180,7 @@ let all_batch () =
        ["x"];
      batch_str (some ~$P.braced_fbind_list_1)
        ["{ Foo.a = y, Foo.b = z }"];
-     batch_str (P.parened (~!P.qcon **> ~$P.aexp_without_lu  **> P.some' ~$P.braced_fbind_list_1))
+     batch_str (P.parened (~!P.qcon **> ~$P.aexp_without_lu  **> P.some ~$P.braced_fbind_list_1))
        ["(x { Foo.a = y, Foo.b = z })"];
      batch_str (P.parened (P.aexp ()))
        ["(x { Foo.a = y, Foo.b = z })"];

@@ -10,6 +10,12 @@ let pos line col = {
   col  = col;
 }
 
+let (<.) a b = (a.line < b.line) || (a.line = b.line) && a.col < b.col
+let (>.) a b = (a.line > b.line) || (a.line = b.line) && a.col > b.col
+
+let former a b = if a <. b then a else b
+let later  a b = if a <. b then b else a
+
 let string_of_pos pos =
   string_of_int pos.line ^ ":" ^ string_of_int pos.col
 
@@ -31,7 +37,7 @@ let offset region = region.start_p.col
 let other_line_p reg0 reg1 =
   (reg1.start_p.line - reg0.end_p.line) > 0
 
-let cover_region reg0 reg1 = region reg0.start_p reg1.end_p
+let cover_region reg0 reg1 = region (former reg0.start_p reg1.start_p) (later reg0.end_p reg1.end_p)
 
 let form_prepend (_, reg0) (form, reg1) =
   (form, cover_region reg0 reg1)

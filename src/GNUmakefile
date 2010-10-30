@@ -18,6 +18,23 @@ all: scratch.cma hpt
 
 rebuild: clean all
 
+olds = \
+	data.ml \
+	symbol.ml \
+	token.ml \
+	lazyList.ml \
+	hsUlexer.ml \
+	hsUlexerTest.ml \
+	hsLayout.ml \
+	hsLayoutTest.ml \
+	hsSyntaxOld.ml \
+	parserOld.ml \
+	simple.ml \
+	parserSimpleTestOld.ml \
+	hsParserStateOld.ml \
+	hsParserOld.ml \
+
+
 sources = \
 	data.ml \
 	symbol.ml \
@@ -29,7 +46,7 @@ sources = \
 	hsLayoutTest.ml \
 	hsSyntax.ml \
 	parser.ml \
-	simple.ml \
+	parserDriver.ml \
 	parserSimpleTest.ml \
 	hsParserState.ml \
 	hsParser.ml \

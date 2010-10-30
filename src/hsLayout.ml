@@ -97,4 +97,4 @@ let lazy_L : 'a t -> 'a forest_t =
 
 let show_out lzl = show_token_forest TK.type_to_string lzl
 
-let layout lzl = lazy_L (input_of_L lzl)
+let layout lzl = frmap (Data.with_fst (fun x -> Some x)) (lazy_L (input_of_L lzl))

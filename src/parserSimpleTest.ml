@@ -55,17 +55,15 @@ let mul m = Mul m
 
 module CI =
 struct
-  type t = token
-  type type_ = unit
+  type type_ = token
   type region = unit
 
   let cover_region = fun () () -> ()
 
-  let to_string _ =  ""
   let type_to_string _ = ""
 end
 
-module C = Simple.Combinator(CI)
+module C = ParserDriver.Combinator(CI)
 open C
 
 let l_paren = just "l_paren" (LParen : C.token)
