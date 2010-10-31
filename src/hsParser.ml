@@ -759,6 +759,8 @@ let module_ =
     <|> HSY.module_main HPST.begin_parse_module *<$> body)
   **< forget (just_tk TK.EOF)
 
+let test_eof    = forget (just_tk TK.EOF)
+
 let drop_any    = pred "drop_any" (fun _ -> true)
 
 let test_any : token exp parser = any

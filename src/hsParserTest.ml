@@ -160,6 +160,8 @@ let qcon s = parse_str s P.qcon
 let qcon0 () = qcon "x"
 let qcon1 () = qcon "Y"
 
+let eof s = parse_str s P.test_eof
+
 let file hs =
   parse_tokens
     (HsUlexer.lazy_list_of_channel (open_in_bin ("../sample/" ^ hs)))

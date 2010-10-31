@@ -90,7 +90,10 @@ struct
         | Some _ -> None
 
   let forget : 'e exp parser -> 'e exp parser =
-    fun ma -> ma >>= fun (a, _) -> return (return' a)
+    fun ma tfo ->
+      match ma tfo with
+        | Some ((ea, _ as a), tfo) -> Some ((ea, None), tfo)
+        | None                     -> None
 
   let any : token exp parser =
     fun tfo ->
