@@ -12,34 +12,12 @@ let call = call_parser
 
 let (|.|) f g x = f (g x)
 
-(*
-let pred_tk : string -> (TK.type_ -> bool) -> TK.t parser =
-  fun name f -> pred name (f |.| fst)
-*)
-
-(* let just_tk eq = pred (TK.type_to_string eq) ((=) eq) *)
 let just_tk tk = just (TK.type_to_string tk) tk
-
-(*
-let untag_tk : string -> (TK.type_ -> 'a option) -> ('a * TK.region) parser =
-  fun name f ->
-    untag name (fun (tk, reg) ->
-      match f tk with
-        | Some v -> Some (v, reg)
-        | None   -> None)
-*)
 
 let qual_id_tk name f =
   HSY.qual_id *<$> untag name f
 
-let pos_dummy = TK.pos (-1) (-1)
-let region_dummy = TK.region pos_dummy pos_dummy
-(* let pure_with_dummy_region v = pure (v, region_dummy) *)
 let pure' v = pure (return' v)
-
-(* let pos_fix_later = pos_dummy *)
-(* let region_fix_later = TK.region pos_fix_later pos_fix_later *)
-(* let p_fix_later : (unit * TK.region) parser = pure ((), region_fix_later) *)
 
 let tk_module = just_tk TK.K_MODULE
 let tk_import = just_tk TK.K_IMPORT
@@ -70,31 +48,7 @@ let opt_exclam = ~?exclam
 (* 汎用の構成子 *)
 (*   構文構造の並び、挟まれる構造、0以上のリスト、1以上のリスト *)
 
-(*
-let form_prepend a p = TK.form_prepend *<$> a *<*> p
-let form_append  p a = TK.form_append  *<$> p *<*> a
-
-let ( **|> ) = form_prepend
-let ( **<| ) = form_append
-*)
-
-(* let form_between a b p = TK.form_between *<$> a *<*> p *<*> b *)
-(* let between a b = form_between a b |.| (lift_a fst) *)
 let between a b p = a **> p **< b
-
-(*
-let form_parened    p = form_between l_paren                      r_paren   p
-let form_bracketed  p = form_between (just_tk TK.SP_LEFT_BRACKET) (just_tk TK.SP_RIGHT_BRACKET) p
-let form_braced     p = form_between l_brace                      r_brace   p
-let form_shift_braced  p = form_between l_brace                   match_or_shift_rb   p
-let form_backquoted p = form_between (just_tk TK.SP_B_QUOTE)      (just_tk TK.SP_B_QUOTE)       p
-
-let parened    p = form_parened    ((lift_a fst) p)
-let bracketed  p = form_bracketed  ((lift_a fst) p)
-let braced     p = form_braced     ((lift_a fst) p)
-let shift_braced  p = form_shift_braced  ((lift_a fst) p)
-let backquoted p = form_backquoted ((lift_a fst) p)
-*)
 
 let parened    p = between l_paren                      r_paren   p
 let bracketed  p = between (just_tk TK.SP_LEFT_BRACKET) (just_tk TK.SP_RIGHT_BRACKET) p
@@ -121,35 +75,6 @@ let many = Combinator.many
 
 let separated a d =
   Data.l1_list *<$> l1_separated a d <|> pure' []
-
-(* リストとなる構文要素 - 長さ0でも可 - 位置情報付き *)
-(*
-let list_form pl =
-  (function
-    | []         -> ([], region_dummy)
-    | [(e, reg)] -> ([e], reg)
-    | (er :: _) as ers -> TK.form_between er (L.map fst ers) (L.hd (Data.last' ers)))
-  *<$> pl
-
-let some' x = list_form (Raw.some x)
-let many' x = list_form (Raw.many x)
-let separated a d = list_form (Raw.separated a d)
-
-let cons_nil x = list_form (Data.cons_nil *<$> x)
-
-let l1_form pl1 =
-  (function
-    | ((e, reg), []) -> ((e, []), reg)
-    | (er, ers)  -> TK.form_between er (fst er, (L.map fst ers)) (L.hd (Data.last' ers)))
-  *<$> pl1
-
-let l1_some x = l1_form (Raw.l1_some x)
-let l1_separated a d = l1_form (Raw.l1_separated a d)
-
-let l1_separated_2 a d = l1_form (Raw.l1_separated_2 a d)
-
-let l1_list_form pl1 = TK.with_region Data.l1_list *<$> l1_form pl1
-*)
 
 (* conid 		(constructors)      *)
 (* conid は doted_conid から使われている *)

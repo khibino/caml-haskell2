@@ -153,28 +153,6 @@ type fixity =
 let default_fixity = I_left
 let default_level  = 9
 
-let comp2_region a b cons = TK.form_between a (cons (fst a) (fst b)) b
-let comp3_region a b c cons = TK.form_between a (cons (fst a) (fst b) (fst c)) c
-
-(* let tuple2_region a b = comp2_region a b Data.tuple2 *)
-
-let comp2_left_opt  l r cons = match l with
-  | Some l -> comp2_region l r (fun a b -> cons (Some a) b)
-  | None   -> TK.with_region (fun b -> cons None b) r
-
-let apply_left_opt l r =
-  comp2_left_opt l r (fun a b -> Data.apply b a)
-
-(*
-let comp2_right_opt l r cons = match r with
-  | Some r -> comp2_region l r (fun a b -> cons a (Some b))
-  | None   -> TK.with_region (fun a -> cons a None) l
-*)
-
-(* let apply_right_opt l r = comp2_right_opt l r Data.apply *)
-
-type fix_later = unit
-
 type gtycon =
   | GT_QTycon of qtycon
   | GT_Unit
@@ -327,25 +305,10 @@ type fdecl =
 let fo_import =
   fun callconv safety impent var ftype ->
     FO_import (callconv, safety, impent, var, ftype)
-(*
-let fo_import callconv safety impent var ftype =
-  TK.form_between callconv
-    (FO_import (fst callconv,
-                Data.with_option fst safety,
-                Data.with_option fst impent,
-                fst var, fst ftype)) ftype
-*)
 
 let fo_export =
   fun callconv expent var ftype ->
     FO_export (callconv, expent, var, ftype)
-(*
-let fo_export callconv expent var ftype =
-  TK.form_between callconv
-    (FO_export (fst callconv,
-                Data.with_option fst expent,
-                fst var, fst ftype)) ftype
-*)
 
 type 'pat fpat = (qvar * 'pat)
 
@@ -427,11 +390,6 @@ let gd_fixity = fun fixity level ops ->
                    | Some level -> level
                    | None -> default_level),
                  Data.l1_list ops)
-(*
-let gd_fixity fixity level ops = 
-match level with
-  | Some level -> comp3_region fixity level ops (fun a b c -> GD_fixity (a, b, Data.l1_list c))
-  | None       -> comp2_region fixity ops       (fun a c -> GD_fixity (a, default_level, Data.l1_list c))*)
 
 type lhs =
   | LHS_fun of funlhs
@@ -514,19 +472,8 @@ type 'infexp alt =
   | AL_empty
 
 let al_pat = fun pat exp decls -> AL_pat (pat, exp, decls)
-(*
-let al_pat pat exp = function
-  | Some decls -> comp3_region pat exp decls (fun a b c -> AL_pat (a, b, Some c))
-  | None       -> comp2_region pat exp (fun a b -> AL_pat (a, b, None))
-*)
 
 let al_gdpat = fun pat gdp decls -> AL_gdpat (pat, Data.l1_list gdp, decls)
-(*
-let al_gdpat pat gdp =
-  function
-    | Some decls -> comp3_region pat gdp decls (fun a b c -> AL_gdpat (a, Data.l1_list b, Some c))
-    | None       -> comp2_region pat gdp (fun a b -> AL_gdpat (a, Data.l1_list b, None))
-*)
 
 type 'infexp aexp =
   | Var    of qvar
@@ -576,14 +523,6 @@ let tuple = fun el  -> (Tuple (Data.l1_list el) : infexp aexp)
 let list  = fun el  -> (List (Data.l1_list el) : infexp aexp)
 
 let aseq = fun _1st _2nd last -> ASeq (_1st, _2nd, last)
-(*
-let aseq _1st _2nd last =
-  apply_right_opt
-    (apply_right_opt
-       (TK.with_region (fun a b c -> ASeq (a, b, c)) _1st)
-       _2nd)
-     last
-*)
 
 let comp = fun exp ql -> Comp (exp, Data.l1_list ql)
 let left_sec   = fun infexp qop -> LeftS (infexp, qop)
@@ -675,21 +614,6 @@ let imd_imp = fun qual modid as_modid spec ->
   IMD_imp ((match qual with | Some _ -> true | None -> false),
            modid, as_modid, spec)
 
-(*
-let imd_imp qual modid as_modid spec =
-  apply_right_opt
-    (apply_right_opt
-       (apply_left_opt
-          qual
-          (TK.with_region
-             (fun a b c d ->
-               IMD_imp ((match b with | Some _ -> true | None -> false),
-                        a, c, d))
-             modid))
-       as_modid)
-    spec
-*)
-
 type topdecl =
   | TD_type of simpletype * type_
   | TD_data of may_be_context * simpletype * constrs option * deriving option
@@ -709,62 +633,14 @@ let td_data = fun context simpletype constrs deriving ->
            Data.with_option Data.l1_list constrs,
            deriving)
 
-(*
-let td_data context simpletype constrs deriving =
-  apply_right_opt
-    (apply_right_opt
-       (apply_left_opt
-          context
-          (TK.with_region
-             (fun a b c d -> TD_data (b, a,
-                                      Data.with_option Data.l1_list c,
-                                      d))
-             simpletype))
-       constrs)
-    deriving
-*)
-
 let td_newtype = fun context simpletype newconstr deriving ->
   TD_newtype (context, simpletype, newconstr, deriving)
-
-(*
-let td_newtype context simpletype newconstr deriving =
-  apply_right_opt
-    (apply_left_opt
-       context
-       (comp2_region
-          simpletype newconstr
-          (fun a b c d -> TD_newtype (c, a, b, d))))
-    deriving
-*)
 
 let td_class = fun context tycls tyvar cdecls ->
   TD_class (context, tycls, tyvar, cdecls)
 
-(*
-let td_class context tycls tyvar cdecls =
-  apply_right_opt
-    (apply_left_opt
-       context
-       (comp2_region
-          tycls tyvar
-          (fun a b c d -> TD_class (c, a, b, d))))
-    cdecls
-*)
-
 let td_instance = fun context tycls inst idecls ->
   TD_instance (context, tycls, inst, idecls)
-
-(*
-let td_instance context tycls inst idecls =
-  apply_right_opt
-    (apply_left_opt
-       context
-       (comp2_region
-          tycls inst
-          (fun a b c d -> TD_instance (c, a, b, d))))
-    idecls
-*)
 
 let td_default = fun tl -> TD_default tl
 
@@ -794,24 +670,6 @@ let module_ : (modid -> 'a) -> modid -> exports option -> body -> module_ =
          | Some ex -> EXS_list ex
          | None    -> EXS_all),
         body))
-
-(*
-let module_ register_module modid =
-  let _ = register_module (fst modid) in
-  fun exports body ->
-    comp2_region
-      modid
-      (apply_left_opt
-         exports
-         (TK.with_region
-            (fun a b c -> (c,
-                           ((match b with
-                             | Some ex -> EXS_list ex
-                             | None    -> EXS_all),
-                            a)))
-            body))
-      (fun a b -> Data.apply b a)
-*)
 
 let module_main register_module =
   let modid = modid_main in
