@@ -671,9 +671,10 @@ let module_ : (modid -> 'a) -> modid -> exports option -> body -> module_ =
          | None    -> EXS_all),
         body))
 
-let module_main register_module =
-  let modid = modid_main in
-  let _ = register_module modid in
-  fun body -> (modid, (EXS_list [EX_var qvarid_main], body))
+let module_main : (modid -> 'a) -> body -> module_ =
+  fun register_module ->
+    let modid = modid_main in
+    let _ = register_module modid in
+    fun body -> (modid, (EXS_list [EX_var qvarid_main], body))
 
 (*  *)

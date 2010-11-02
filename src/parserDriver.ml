@@ -92,7 +92,7 @@ struct
   let forget : 'e exp parser -> 'e exp parser =
     fun ma tfo ->
       match ma tfo with
-        | Some ((ea, _ as a), tfo) -> Some ((ea, None), tfo)
+        | Some ((ea, _), tfo) -> Some ((ea, None), tfo)
         | None                     -> None
 
   let any : token exp parser =
