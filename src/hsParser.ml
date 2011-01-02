@@ -77,11 +77,11 @@ let separated a d =
   Data.l1_list *<$> l1_separated a d <|> pure' []
 
 (* conid 		(constructors)      *)
-(* conid は doted_conid から使われている *)
-(* conid is used by doted_conid above *)
+(* conid は dotted_conid から使われている *)
+(* conid is used by dotted_conid above *)
 (* Qualified constructor or module id is ambiguous *)
 let conid = untag "conid" (function | TK.T_CONID s -> Some s | _ -> None)
-let doted_conid = untag "doted_conid" (function | TK.T_DOT_CONID s  -> Some s | _ -> None) <|> conid
+let dotted_conid = untag "dotted_conid" (function | TK.T_DOT_CONID s  -> Some s | _ -> None) <|> conid
 
 (* 10.2  Lexical Syntax *)
 
@@ -120,7 +120,7 @@ let tycon = conid
 (* tycls 	→ 	conid     	(type classes) *)
 let tycls = conid
 (* modid 	→ 	{conid .} conid     	(modules) *)
-let modid = doted_conid
+let modid = dotted_conid
 
 (* qvarid 	→ 	[ modid . ] varid      *)
 let qvarid = qual_id_tk "qvarid" (function
@@ -128,7 +128,7 @@ let qvarid = qual_id_tk "qvarid" (function
   | _ -> None)
   <|> HPST.q_not_qual *<$> varid
 (* qconid 	→ 	[ modid . ] conid      *)
-let qconid  = HPST.sym_to_qconid *<$> doted_conid
+let qconid  = HPST.sym_to_qconid *<$> dotted_conid
 (* qtycon 	→ 	[ modid . ] tycon      *)
 let qtycon  = qual_id_tk "qtycon" (function
   | TK.T_DOT_CONID s  -> Some (TK.syms_of_qstring (Symbol.name s))
@@ -351,9 +351,6 @@ let conv_words = L.map Symbol.intern
 
 let safety_words = L.map Symbol.intern
   ["unsafe";  "safe"]
-
-let unsafe = Symbol.intern
-let safe   = Symbol.intern "safe"
 
 let callconv = untag "callconv" (function
   | TK.T_VARID s when L.memq s conv_words -> Some s
