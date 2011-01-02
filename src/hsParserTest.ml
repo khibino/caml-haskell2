@@ -14,7 +14,7 @@ let parse_tokens lzl raw seq_parser =
   let parse_tokens zl = run seq_parser zl in
   parse_tokens
     (if raw then
-        ZL.frmap
+        ZL.fomap
         (Data.with_fst (fun x -> Some x))
         (ZL.return (ZL.tree_of_lzlist lzl))
      else let lzl = LO.layout lzl in

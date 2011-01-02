@@ -24,26 +24,30 @@ module ZL = LazyList
 module T =
 struct
   type ('e, 'reg) exp = 'e * 'reg option
-  type ('tk, 'reg) tklist = ('tk, 'reg) exp ZL.forest_t
-  type ('tk, 'reg, 'exp) result = ('exp * ('tk, 'reg) tklist) option
-  type ('tk, 'reg, 'exp) parser = ('tk, 'reg) tklist -> ('tk, 'reg, 'exp) result
+  type 'exp seq = 'exp ZL.forest_t
+  type ('deriv, 'exp) result = ('exp * 'deriv) option
+  type ('deriv, 'exp) parser = 'deriv -> ('deriv, 'exp) result
+  type ('deriv, 'exp) raw_parser = 'exp seq -> ('deriv, 'exp) result
 end
 
 module DriverWithRegion(Tk : TOKEN) : DRIVER
   with type token = Tk.type_ 
-  and  type 'tk tklist = ('tk, Tk.region) T.tklist
+  (* and  type 'tk tklist = ('tk, Tk.region) T.tklist *)
   and  type 'e exp = ('e, Tk.region) T.exp
-  and  type 'exp result = (Tk.type_, Tk.region, 'exp) T.result
-  and  type 'exp parser = (Tk.type_, Tk.region, 'exp) T.parser
+  and  type 'exp seq = 'exp T.seq
+  and  type ('deriv, 'exp) result = ('deriv, 'exp) T.result
+  and  type ('deriv, 'exp) parser = ('deriv, 'exp) T.parser
+  and  type ('deriv, 'exp) raw_parser = ('deriv, 'exp) T.raw_parser
                  =
 struct
 
   type token = Tk.type_
 
-  type 'tk tklist = ('tk, Tk.region) T.tklist
   type 'e exp = ('e, Tk.region) T.exp
-  type 'exp result = (Tk.type_, Tk.region, 'exp) T.result
-  type 'exp parser = (Tk.type_, Tk.region, 'exp) T.parser
+  type 'exp seq = 'exp T.seq
+  type ('deriv, 'exp) result = ('deriv, 'exp) T.result
+  type ('deriv, 'exp) parser = ('deriv, 'exp) T.parser
+  type ('deriv, 'exp) raw_parser = ('deriv, 'exp) T.raw_parser
 
   let merge_region = function
     | (Some a, Some b) -> Some (Tk.cover_region a b)
@@ -56,81 +60,97 @@ struct
   let ap'     : ('e0 -> 'e1) exp -> 'e0 exp -> 'e1 exp =
     fun (f, reg0) (e0, reg1) -> (f e0, merge_region (reg0, reg1))
 
-  let bind : 'e0 exp parser -> ('e0 exp -> 'e1 exp parser) -> 'e1 exp parser =
-    fun ma f tfo ->
-      match ma tfo with
+  let bind : ('deriv, 'e0 exp) parser -> ('e0 exp -> ('deriv, 'e1 exp) parser) -> ('deriv, 'e1 exp) parser =
+    fun ma f dv ->
+      match ma dv with
         | None                -> None
-        | Some ((_, ra as a), tfo) -> 
-          (match f a tfo with
+        | Some ((_, ra as a), dv) -> 
+          (match f a dv with
             | None                -> None
-            | Some ((eb, rb), tfo) -> Some ((eb, merge_region (ra, rb)), tfo))
+            | Some ((eb, rb), dv) -> Some ((eb, merge_region (ra, rb)), dv))
 
   let (>>=) = bind
 
-  let return : 'e exp -> 'e exp parser = fun e tfo -> Some (e, tfo)
+  let return : 'e exp -> ('deriv, 'e exp) parser = fun e dv -> Some (e, dv)
 
-  let mzero : 'e exp parser = fun _ -> None
+  let mzero : ('deriv, 'e exp) parser = fun _ -> None
 
-  let mplus : 'e exp parser -> 'e exp parser -> 'e exp parser =
-    fun ma mb tfo ->
-      match ma tfo with
-        | None -> mb tfo
+  let mplus : ('deriv, 'e exp) parser -> ('deriv, 'e exp) parser -> ('deriv, 'e exp) parser =
+    fun ma mb dv ->
+      match ma dv with
+        | None -> mb dv
         | v    -> v
 
-  let and_parser : 'e exp parser -> unit exp parser =
-    fun ma tfo ->
-      match ma tfo with
+  let and_parser : ('deriv, 'e exp) parser -> ('deriv, unit exp) parser =
+    fun ma dv ->
+      match ma dv with
         | None   -> None
-        | Some _ -> Some (((), None), tfo)
+        | Some _ -> Some (((), None), dv)
 
-  let not_parser : 'e exp parser -> unit exp parser =
-    fun ma tfo ->
-      match ma tfo with
-        | None   -> Some (((), None), tfo)
+  let not_parser : ('deriv, 'e exp) parser -> ('deriv, unit exp) parser =
+    fun ma dv ->
+      match ma dv with
+        | None   -> Some (((), None), dv)
         | Some _ -> None
 
-  let forget : 'e exp parser -> 'e exp parser =
-    fun ma tfo ->
-      match ma tfo with
-        | Some ((ea, _), tfo) -> Some ((ea, None), tfo)
-        | None                     -> None
+  let forget : ('deriv, 'e exp) parser -> ('deriv, 'e exp) parser =
+    fun ma dv ->
+      match ma dv with
+        | Some ((ea, _), dv) -> Some ((ea, None), dv)
+        | None                -> None
 
-  let any : token exp parser =
+  let derive_seq
+      : (token exp seq -> 'derive) -> ('deriv, token exp) raw_parser =
+    fun do_derive dv ->
+      match ZL.peek dv with
+        | None                             -> None
+        | Some (lazy (ZL.Node (fst, dv))) -> Some (fst, do_derive dv)
+
+  let to_satisfy
+      : ('deriv, token exp) parser -> (token -> bool)
+        -> ('deriv, token exp) parser =
+    fun tp pre d ->
+      match tp d with
+        | (Some ((tk, _), d') as r) when pre tk -> r
+        | Some _ | None                         -> None
+
+  let debug = true
+
+  let debug_show_shift =
+    if debug then
+      (function 
+        | (lazy (ZL.Cons (lazy (ZL.Node (_, next)), _))) as tfo ->
+          Printf.fprintf stderr "shift invocation: next: %s\n"
+            (ZL.foldl'
+               (fun res tr -> res ^ " " ^ Tk.type_to_string (fst (ZL.t_peek tr)))
+               "" next);
+          flush stderr;
+          tfo
+        | tfo -> tfo)
+    else fun tfo -> tfo
+
+  let may_shift
+      : token exp seq -> token exp seq option =
     fun tfo ->
-      match ZL.peek tfo with
-        | None                         -> None
-        | Some (lazy (ZL.Node (node))) -> Some node
+      match ZL.next tfo with
+        | Some (_, tfo) -> Some (debug_show_shift tfo)
+        | None          -> None
 
-  let satisfy : string -> (token -> bool) -> token exp parser =
-    fun name pred tfo ->
-      match ZL.peek tfo with
-        | Some (lazy (ZL.Node ((tk, _), _ as node))) when pred tk
-            -> Some node
-        | Some _ | None -> None
-
-
-  module F = Printf
   (* マッチしなかったときに次の枝をマッチする parser に変換 *)
-  let match_or_shift : token exp parser -> token exp parser =
-    fun ma tfo ->
-      match ma tfo with
+  let match_or_shift
+      : (token exp seq -> 'deriv) -> ('deriv -> token exp seq)
+    -> ('deriv, token exp) parser
+    -> ('deriv, token exp) parser =
+    fun to_d from_d ma dv ->
+      match ma dv with
         | None ->
-          (match ZL.next tfo with
-            | Some (_, tfo) ->
-              if true then
-                (match tfo with
-                  | lazy (ZL.Cons (lazy (ZL.Node (_, next)), _)) ->
-                    F.printf "shift invocation: next: %s\n"
-                      (ZL.foldl'
-                         (fun res tr -> res ^ " " ^ Tk.type_to_string (fst (ZL.t_peek tr)))
-                         "" next)
-                  | _ -> ());
-              ma tfo
-            | None           -> None)
+          (match may_shift (from_d dv) with
+            | None     -> None
+            | Some tfo -> ma (to_d tfo))
         | v    -> v
 
-  let run : 'e exp parser -> token tklist -> 'e exp result =
-    fun p tkl -> p tkl
+  let run : ('deriv, 'e exp) parser -> 'deriv -> ('deriv, 'e exp) result =
+    fun p dv -> p dv
 
 end
 

@@ -141,7 +141,7 @@ let tree_of_lzlist l =
 let rec tmap f (lazy (Node (n, chld))) =
   lazy (Node (f n, (map (tmap f) chld)))
 
-let frmap f fr = map (tmap f) fr
+let fomap f fr = map (tmap f) fr
 
 let rec tree_to_lzlist tr =
   unfold (return tr)
@@ -171,6 +171,10 @@ type 'a e_tree_t =
 let rec tree_to_eager t =
   match t_childs t with
     | (e, chldl) -> ENode (e, to_list (map tree_to_eager chldl))
+
+let rec tree_of_eager et =
+  match et with
+    | ENode (e, chldl) -> t_cons e (of_list (List.map tree_of_eager chldl))
 
 (*
  * end of lazyList.ml
