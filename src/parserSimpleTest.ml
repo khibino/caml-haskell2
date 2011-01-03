@@ -137,6 +137,22 @@ let bin_op = untag (function
 
 (* let parened p = l_paren *> p <* r_paren *)
 
+let     app_expr () =
+  (fapp <$> D.func_expr <*> D.uni_expr)
+  <|> (uni <$> D.uni_expr)
+
+let     mul_expr () =
+  (times <$> D.app_expr <*> (times_op *> D.app_expr))
+  <|> (app <$> D.app_expr)
+
+let     expr () = 
+  (plus <$> D.mul_expr <*> plus_op *> D.mul_expr)
+  <|> (minus <$> D.mul_expr <*>  minus_op *> D.mul_expr)
+    <|> (mul <$> D.mul_expr)
+
+let     top () =
+  D.expr <* just Eos
+
 let rec r_paren' l = may_shift r_paren l
 
 and     uni_expr ()  =
@@ -149,22 +165,6 @@ and     func_expr () =
     (~! minus_op *> (r_sec <$> bin_op <*> D.uni_expr))
     <|> (l_sec <$> D.uni_expr <*> bin_op)
   ) **< r_paren'
-
-and     app_expr () =
-  (fapp <$> D.func_expr <*> D.uni_expr)
-  <|> (uni <$> D.uni_expr)
-
-and     mul_expr () =
-  (times <$> D.app_expr <*> (times_op *> D.app_expr))
-  <|> (app <$> D.app_expr)
-
-and     expr () = 
-  (plus <$> D.mul_expr <*> plus_op *> D.mul_expr)
-  <|> (minus <$> D.mul_expr <*>  minus_op *> D.mul_expr)
-    <|> (mul <$> D.mul_expr)
-
-and     top () =
-  D.expr <* just Eos
 
 and     make_derive tfo =
   let call p d = Z.force (run (p ()) (d ())) in

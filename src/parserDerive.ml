@@ -559,12 +559,5 @@ let body : deriv -> (deriv, HSY.body exp) result =
   fun d -> d.body
 let module_ : deriv -> (deriv, HSY.module_ exp) result =
   fun d -> d.module_
-
-(*
-let rec parse s =
-  let rec d = lazy ((fun () -> {
-    
-  }) ())
-  and
-*)
   
+(* *)
