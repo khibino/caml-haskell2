@@ -110,9 +110,6 @@ module Z = Lazy
 
 let any = D.token
 
-let satisfy : (token -> bool) -> ('deriv, token exp) parser =
-  to_satisfy any
-
 let just : token -> ('deriv, token exp) parser =
   fun tk d -> to_just any tk d
 

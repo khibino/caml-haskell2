@@ -14,7 +14,7 @@ module HSY = HsSyntax
 (* type ('deriv, 'exp) result = ('deriv, 'exp) T.result *)
 (* type ('deriv, 'exp) parser = ('deriv, 'exp) T.parser *)
 
-type deriv = {
+type deriv_t = {
   token : (deriv, token exp) result;
   
 (* val tk_module : token Combinator.exp Combinator.parser *)
@@ -58,7 +58,7 @@ l_brace : (deriv, token exp) result;
 (* val r_brace : token Combinator.exp Combinator.parser *)
 r_brace : (deriv, token exp) result;
 (* val match_or_shift_rb : token Combinator.exp Combinator.parser *)
-match_or_shift_rb : (deriv, token exp) result;
+r_brace'' : (deriv, token exp) result;
 (* val opt_semi : token option Combinator.exp Combinator.parser *)
 opt_semi : (deriv, token option exp) result;
 (* val opt_exclam : token option Combinator.exp Combinator.parser *)
@@ -291,273 +291,280 @@ module_ : (deriv, HSY.module_ exp) result;
 
 }
 
+and  deriv = deriv_t * token exp seq
+
+let cons_deriv t s = (t, s)
+let deriv_deriv_t = fst
+let deriv_source  = snd
 
 
+let token : deriv -> (deriv, token exp) result =
+  fun d -> (deriv_deriv_t d).token
 let tk_module : deriv -> (deriv, token exp) result =
-  fun d -> d.tk_module
+  fun d -> (deriv_deriv_t d).tk_module
 let tk_import : deriv -> (deriv, token exp) result =
-  fun d -> d.tk_import
+  fun d -> (deriv_deriv_t d).tk_import
 let tk_export : deriv -> (deriv, token exp) result =
-  fun d -> d.tk_export
+  fun d -> (deriv_deriv_t d).tk_export
 let let_ : deriv -> (deriv, token exp) result =
-  fun d -> d.let_
+  fun d -> (deriv_deriv_t d).let_
 let where : deriv -> (deriv, token exp) result =
-  fun d -> d.where
+  fun d -> (deriv_deriv_t d).where
 let comma : deriv -> (deriv, token exp) result =
-  fun d -> d.comma
+  fun d -> (deriv_deriv_t d).comma
 let semi : deriv -> (deriv, token exp) result =
-  fun d -> d.semi
+  fun d -> (deriv_deriv_t d).semi
 let eq : deriv -> (deriv, token exp) result =
-  fun d -> d.eq
+  fun d -> (deriv_deriv_t d).eq
 let minus : deriv -> (deriv, token exp) result =
-  fun d -> d.minus
+  fun d -> (deriv_deriv_t d).minus
 let exclam : deriv -> (deriv, token exp) result =
-  fun d -> d.exclam
+  fun d -> (deriv_deriv_t d).exclam
 let two_colon : deriv -> (deriv, token exp) result =
-  fun d -> d.two_colon
+  fun d -> (deriv_deriv_t d).two_colon
 let dotdot : deriv -> (deriv, token exp) result =
-  fun d -> d.dotdot
+  fun d -> (deriv_deriv_t d).dotdot
 let bar : deriv -> (deriv, token exp) result =
-  fun d -> d.bar
+  fun d -> (deriv_deriv_t d).bar
 let l_arrow : deriv -> (deriv, token exp) result =
-  fun d -> d.l_arrow
+  fun d -> (deriv_deriv_t d).l_arrow
 let r_arrow : deriv -> (deriv, token exp) result =
-  fun d -> d.r_arrow
+  fun d -> (deriv_deriv_t d).r_arrow
 let r_w_arrow : deriv -> (deriv, token exp) result =
-  fun d -> d.r_w_arrow
+  fun d -> (deriv_deriv_t d).r_w_arrow
 let l_paren : deriv -> (deriv, token exp) result =
-  fun d -> d.l_paren
+  fun d -> (deriv_deriv_t d).l_paren
 let r_paren : deriv -> (deriv, token exp) result =
-  fun d -> d.r_paren
+  fun d -> (deriv_deriv_t d).r_paren
 let l_brace : deriv -> (deriv, token exp) result =
-  fun d -> d.l_brace
+  fun d -> (deriv_deriv_t d).l_brace
 let r_brace : deriv -> (deriv, token exp) result =
-  fun d -> d.r_brace
-let match_or_shift_rb : deriv -> (deriv, token exp) result =
-  fun d -> d.match_or_shift_rb
+  fun d -> (deriv_deriv_t d).r_brace
+let r_brace'' : deriv -> (deriv, token exp) result =
+  fun d -> (deriv_deriv_t d).r_brace''
 let opt_semi : deriv -> (deriv, token option exp) result =
-  fun d -> d.opt_semi
+  fun d -> (deriv_deriv_t d).opt_semi
 let opt_exclam : deriv -> (deriv, token option exp) result =
-  fun d -> d.opt_exclam
+  fun d -> (deriv_deriv_t d).opt_exclam
 let conid : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.conid
+  fun d -> (deriv_deriv_t d).conid
 let dotted_conid : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.dotted_conid
+  fun d -> (deriv_deriv_t d).dotted_conid
 let literal : deriv -> (deriv, HSY.lit exp) result =
-  fun d -> d.literal
+  fun d -> (deriv_deriv_t d).literal
 let varsym : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.varsym
+  fun d -> (deriv_deriv_t d).varsym
 let consym : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.consym
+  fun d -> (deriv_deriv_t d).consym
 let varid : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.varid
+  fun d -> (deriv_deriv_t d).varid
 let tyvar : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.tyvar
+  fun d -> (deriv_deriv_t d).tyvar
 let tycon : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.tycon
+  fun d -> (deriv_deriv_t d).tycon
 let tycls : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.tycls
+  fun d -> (deriv_deriv_t d).tycls
 let modid : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.modid
+  fun d -> (deriv_deriv_t d).modid
 let qvarid : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.qvarid
+  fun d -> (deriv_deriv_t d).qvarid
 let qconid : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.qconid
+  fun d -> (deriv_deriv_t d).qconid
 let qtycon : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.qtycon
+  fun d -> (deriv_deriv_t d).qtycon
 let qtycls : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.qtycls
+  fun d -> (deriv_deriv_t d).qtycls
 let qvarsym : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.qvarsym
+  fun d -> (deriv_deriv_t d).qvarsym
 let qconsym : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.qconsym
+  fun d -> (deriv_deriv_t d).qconsym
 let string : deriv -> (deriv, HSY.hs_string exp) result =
-  fun d -> d.string
+  fun d -> (deriv_deriv_t d).string
 let integer : deriv -> (deriv, int64 exp) result =
-  fun d -> d.integer
+  fun d -> (deriv_deriv_t d).integer
 let float : deriv -> (deriv, float exp) result =
-  fun d -> d.float
+  fun d -> (deriv_deriv_t d).float
 let fixity_int : deriv -> (deriv, int exp) result =
-  fun d -> d.fixity_int
+  fun d -> (deriv_deriv_t d).fixity_int
 let var : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.var
+  fun d -> (deriv_deriv_t d).var
 let qvar : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.qvar
+  fun d -> (deriv_deriv_t d).qvar
 let con : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.con
+  fun d -> (deriv_deriv_t d).con
 let gconsym : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.gconsym
+  fun d -> (deriv_deriv_t d).gconsym
 let qcon : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.qcon
+  fun d -> (deriv_deriv_t d).qcon
 let varop : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.varop
+  fun d -> (deriv_deriv_t d).varop
 let qvarop : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.qvarop
+  fun d -> (deriv_deriv_t d).qvarop
 let conop : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.conop
+  fun d -> (deriv_deriv_t d).conop
 let qconop : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.qconop
+  fun d -> (deriv_deriv_t d).qconop
 let op : deriv -> (deriv, SYM.t exp) result =
-  fun d -> d.op
+  fun d -> (deriv_deriv_t d).op
 let qop : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.qop
+  fun d -> (deriv_deriv_t d).qop
 let commas1 : deriv -> (deriv, int exp) result =
-  fun d -> d.commas1
+  fun d -> (deriv_deriv_t d).commas1
 let gcon : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.gcon
+  fun d -> (deriv_deriv_t d).gcon
 let ops : deriv -> (deriv, SYM.t Data.l1_list exp) result =
-  fun d -> d.ops
+  fun d -> (deriv_deriv_t d).ops
 let vars : deriv -> (deriv, SYM.t Data.l1_list exp) result =
-  fun d -> d.vars
+  fun d -> (deriv_deriv_t d).vars
 let fixity : deriv -> (deriv, HSY.fixity exp) result =
-  fun d -> d.fixity
+  fun d -> (deriv_deriv_t d).fixity
 let gtycon : deriv -> (deriv, HSY.gtycon exp) result =
-  fun d -> d.gtycon
+  fun d -> (deriv_deriv_t d).gtycon
 let type_ : deriv -> (deriv, HSY.type_ exp) result =
-  fun d -> d.type_
+  fun d -> (deriv_deriv_t d).type_
 let btype : deriv -> (deriv, HSY.btype exp) result =
-  fun d -> d.btype
+  fun d -> (deriv_deriv_t d).btype
 let atype : deriv -> (deriv, HSY.atype exp) result =
-  fun d -> d.atype
+  fun d -> (deriv_deriv_t d).atype
 let class_ : deriv -> (deriv, HSY.class_ exp) result =
-  fun d -> d.class_
+  fun d -> (deriv_deriv_t d).class_
 let context : deriv -> (deriv, HSY.context exp) result =
-  fun d -> d.context
+  fun d -> (deriv_deriv_t d).context
 let may_be_context : deriv -> (deriv, HSY.may_be_context exp) result =
-  fun d -> d.may_be_context
+  fun d -> (deriv_deriv_t d).may_be_context
 let simpleclass : deriv -> (deriv, HSY.simpleclass exp) result =
-  fun d -> d.simpleclass
+  fun d -> (deriv_deriv_t d).simpleclass
 let scontext : deriv -> (deriv, HSY.scontext exp) result =
-  fun d -> d.scontext
+  fun d -> (deriv_deriv_t d).scontext
 let may_be_scontext : deriv -> (deriv, HSY.may_be_scontext exp) result =
-  fun d -> d.may_be_scontext
+  fun d -> (deriv_deriv_t d).may_be_scontext
 let simpletype : deriv -> (deriv, HSY.simpletype exp) result =
-  fun d -> d.simpletype
+  fun d -> (deriv_deriv_t d).simpletype
 let constr_arg : deriv -> (deriv, HSY.constr_arg exp) result =
-  fun d -> d.constr_arg
+  fun d -> (deriv_deriv_t d).constr_arg
 let fielddecl : deriv -> (deriv, HSY.fielddecl exp) result =
-  fun d -> d.fielddecl
+  fun d -> (deriv_deriv_t d).fielddecl
 let constr : deriv -> (deriv, HSY.constr exp) result =
-  fun d -> d.constr
+  fun d -> (deriv_deriv_t d).constr
 let constrs : deriv -> (deriv, HSY.constr Data.l1_list exp) result =
-  fun d -> d.constrs
+  fun d -> (deriv_deriv_t d).constrs
 let newconstr : deriv -> (deriv, HSY.newconstr exp) result =
-  fun d -> d.newconstr
+  fun d -> (deriv_deriv_t d).newconstr
 let dclass : deriv -> (deriv, HSY.id exp) result =
-  fun d -> d.dclass
+  fun d -> (deriv_deriv_t d).dclass
 let deriving : deriv -> (deriv, HSY.deriving exp) result =
-  fun d -> d.deriving
+  fun d -> (deriv_deriv_t d).deriving
 let inst : deriv -> (deriv, HSY.inst exp) result =
-  fun d -> d.inst
+  fun d -> (deriv_deriv_t d).inst
 let fatype : deriv -> (deriv, HSY.fatype exp) result =
-  fun d -> d.fatype
+  fun d -> (deriv_deriv_t d).fatype
 let frtype : deriv -> (deriv, HSY.frtype exp) result =
-  fun d -> d.frtype
+  fun d -> (deriv_deriv_t d).frtype
 let ftype : deriv -> (deriv, HSY.ftype exp) result =
-  fun d -> d.ftype
+  fun d -> (deriv_deriv_t d).ftype
 let callconv : deriv -> (deriv, HSY.callconv exp) result =
-  fun d -> d.callconv
+  fun d -> (deriv_deriv_t d).callconv
 let impent : deriv -> (deriv, HSY.impent exp) result =
-  fun d -> d.impent
+  fun d -> (deriv_deriv_t d).impent
 let expent : deriv -> (deriv, HSY.expent exp) result =
-  fun d -> d.expent
+  fun d -> (deriv_deriv_t d).expent
 let safety : deriv -> (deriv, HSY.safety exp) result =
-  fun d -> d.safety
+  fun d -> (deriv_deriv_t d).safety
 let fdecl : deriv -> (deriv, HSY.fdecl exp) result =
-  fun d -> d.fdecl
+  fun d -> (deriv_deriv_t d).fdecl
 let pat : deriv -> (deriv, HSY.pat exp) result =
-  fun d -> d.pat
+  fun d -> (deriv_deriv_t d).pat
 let lpat : deriv -> (deriv, HSY.pat HSY.lpat exp) result =
-  fun d -> d.lpat
+  fun d -> (deriv_deriv_t d).lpat
 let comma_patl_1 : deriv -> (deriv, HSY.pat Data.l1_list exp) result =
-  fun d -> d.comma_patl_1
+  fun d -> (deriv_deriv_t d).comma_patl_1
 let comma_patl_2 : deriv -> (deriv, HSY.pat Data.l1_list exp) result =
-  fun d -> d.comma_patl_2
+  fun d -> (deriv_deriv_t d).comma_patl_2
 let apat : deriv -> (deriv, HSY.pat HSY.apat exp) result =
-  fun d -> d.apat
+  fun d -> (deriv_deriv_t d).apat
 let fpat : deriv -> (deriv, HSY.pat HSY.fpat exp) result =
-  fun d -> d.fpat
+  fun d -> (deriv_deriv_t d).fpat
 let funlhs : deriv -> (deriv, HSY.funlhs exp) result =
-  fun d -> d.funlhs
+  fun d -> (deriv_deriv_t d).funlhs
 let opt_where_decls : deriv -> (deriv, HSY.infexp HSY.decls option exp) result =
-  fun d -> d.opt_where_decls
+  fun d -> (deriv_deriv_t d).opt_where_decls
 let let_decls : deriv -> (deriv, HSY.infexp HSY.decls exp) result =
-  fun d -> d.let_decls
+  fun d -> (deriv_deriv_t d).let_decls
 let rhs : deriv -> (deriv, HSY.infexp HSY.rhs exp) result =
-  fun d -> d.rhs
+  fun d -> (deriv_deriv_t d).rhs
 let gdrhs : deriv -> (deriv, HSY.infexp HSY.gdrhs exp) result =
-  fun d -> d.gdrhs
+  fun d -> (deriv_deriv_t d).gdrhs
 let guards : deriv -> (deriv, HSY.infexp HSY.guard Data.l1_list exp) result =
-  fun d -> d.guards
+  fun d -> (deriv_deriv_t d).guards
 let guard : deriv -> (deriv, HSY.infexp HSY.guard exp) result =
-  fun d -> d.guard
+  fun d -> (deriv_deriv_t d).guard
 let exp : deriv -> (deriv, HSY.infexp HSY.exp exp) result =
-  fun d -> d.exp
+  fun d -> (deriv_deriv_t d).exp
 let infixexp : deriv -> (deriv, HSY.infexp exp) result =
-  fun d -> d.infixexp
+  fun d -> (deriv_deriv_t d).infixexp
 let lexp : deriv -> (deriv, HSY.infexp HSY.lexp exp) result =
-  fun d -> d.lexp
+  fun d -> (deriv_deriv_t d).lexp
 let fexp : deriv -> (deriv, HSY.infexp HSY.fexp exp) result =
-  fun d -> d.fexp
+  fun d -> (deriv_deriv_t d).fexp
 let comma_expl_1 : deriv -> (deriv, HSY.infexp HSY.exp Data.l1_list exp) result =
-  fun d -> d.comma_expl_1
+  fun d -> (deriv_deriv_t d).comma_expl_1
 let comma_expl_2 : deriv -> (deriv, HSY.infexp HSY.exp Data.l1_list exp) result =
-  fun d -> d.comma_expl_2
+  fun d -> (deriv_deriv_t d).comma_expl_2
 let aexp_without_lu : deriv -> (deriv, HSY.infexp HSY.aexp exp) result =
-  fun d -> d.aexp_without_lu
+  fun d -> (deriv_deriv_t d).aexp_without_lu
 let braced_fbind_list_1 : deriv -> (deriv, HSY.infexp HSY.fbind Data.l1_list exp) result =
-  fun d -> d.braced_fbind_list_1
+  fun d -> (deriv_deriv_t d).braced_fbind_list_1
 let aexp : deriv -> (deriv, HSY.infexp HSY.aexp exp) result =
-  fun d -> d.aexp
+  fun d -> (deriv_deriv_t d).aexp
 let qual : deriv -> (deriv, HSY.infexp HSY.qual exp) result =
-  fun d -> d.qual
+  fun d -> (deriv_deriv_t d).qual
 let alts : deriv -> (deriv, HSY.infexp HSY.alt Data.l1_list exp) result =
-  fun d -> d.alts
+  fun d -> (deriv_deriv_t d).alts
 let alt : deriv -> (deriv, HSY.infexp HSY.alt exp) result =
-  fun d -> d.alt
+  fun d -> (deriv_deriv_t d).alt
 let gdpat : deriv -> (deriv, (HSY.infexp HSY.guards * HSY.infexp HSY.exp) Data.l1_list exp) result =
-  fun d -> d.gdpat
+  fun d -> (deriv_deriv_t d).gdpat
 let stmts : deriv -> (deriv, (HSY.infexp HSY.stmt list * HSY.infexp HSY.exp) exp) result =
-  fun d -> d.stmts
+  fun d -> (deriv_deriv_t d).stmts
 let stmt : deriv -> (deriv, HSY.infexp HSY.stmt exp) result =
-  fun d -> d.stmt
+  fun d -> (deriv_deriv_t d).stmt
 let fbind : deriv -> (deriv, HSY.infexp HSY.fbind exp) result =
-  fun d -> d.fbind
+  fun d -> (deriv_deriv_t d).fbind
 let gendecl : deriv -> (deriv, HSY.gendecl exp) result =
-  fun d -> d.gendecl
+  fun d -> (deriv_deriv_t d).gendecl
 let decls : deriv -> (deriv, HSY.infexp HSY.decls exp) result =
-  fun d -> d.decls
+  fun d -> (deriv_deriv_t d).decls
 let decl : deriv -> (deriv, HSY.infexp HSY.decl exp) result =
-  fun d -> d.decl
+  fun d -> (deriv_deriv_t d).decl
 let cdecl : deriv -> (deriv, HSY.infexp HSY.cdecl exp) result =
-  fun d -> d.cdecl
+  fun d -> (deriv_deriv_t d).cdecl
 let cdecls : deriv -> (deriv, HSY.infexp HSY.cdecls exp) result =
-  fun d -> d.cdecls
+  fun d -> (deriv_deriv_t d).cdecls
 let idecl : deriv -> (deriv, HSY.infexp HSY.idecl exp) result =
-  fun d -> d.idecl
+  fun d -> (deriv_deriv_t d).idecl
 let idecls : deriv -> (deriv, HSY.infexp HSY.idecls exp) result =
-  fun d -> d.idecls
+  fun d -> (deriv_deriv_t d).idecls
 let cname : deriv -> (deriv, HSY.cname exp) result =
-  fun d -> d.cname
+  fun d -> (deriv_deriv_t d).cname
 let export : deriv -> (deriv, HSY.export exp) result =
-  fun d -> d.export
+  fun d -> (deriv_deriv_t d).export
 let exports : deriv -> (deriv, HSY.exports exp) result =
-  fun d -> d.exports
+  fun d -> (deriv_deriv_t d).exports
 let import : deriv -> (deriv, HSY.import exp) result =
-  fun d -> d.import
+  fun d -> (deriv_deriv_t d).import
 let impspec : deriv -> (deriv, HSY.impspec exp) result =
-  fun d -> d.impspec
+  fun d -> (deriv_deriv_t d).impspec
 let impdecl : deriv -> (deriv, HSY.impdecl exp) result =
-  fun d -> d.impdecl
+  fun d -> (deriv_deriv_t d).impdecl
 let impdecls : deriv -> (deriv, HSY.impdecl Data.l1_list exp) result =
-  fun d -> d.impdecls
+  fun d -> (deriv_deriv_t d).impdecls
 let topdecl : deriv -> (deriv, HSY.topdecl exp) result =
-  fun d -> d.topdecl
+  fun d -> (deriv_deriv_t d).topdecl
 let topdecls : deriv -> (deriv, HSY.topdecls exp) result =
-  fun d -> d.topdecls
+  fun d -> (deriv_deriv_t d).topdecls
 let body : deriv -> (deriv, HSY.body exp) result =
-  fun d -> d.body
+  fun d -> (deriv_deriv_t d).body
 let module_ : deriv -> (deriv, HSY.module_ exp) result =
-  fun d -> d.module_
+  fun d -> (deriv_deriv_t d).module_
   
 (* *)

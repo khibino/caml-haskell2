@@ -6,6 +6,8 @@ ocamlfind_verbose = -verbose
 extra_interfaces = lablgtk2 ulex extlib
 extra_archives = lablgtk ulexing extLib
 
+programs = hsParserTestMain_b hpt
+
 %Ulexer.cmo: %Ulexer.ml
 	ocamlfind ocamlc -c -o $@ $(ocamlfind_pkg_opt) $(ocamlfind_pp_opt) $(ocamlfind_verbose) $<
 
@@ -14,26 +16,9 @@ extra_archives = lablgtk ulexing extLib
 
 include ocaml_basic.gmk
 
-all: scratch.cma hpt
+all: scratch.cma $(programs)
 
 rebuild: clean all
-
-olds = \
-	data.ml \
-	symbol.ml \
-	token.ml \
-	lazyList.ml \
-	hsUlexer.ml \
-	hsUlexerTest.ml \
-	hsLayout.ml \
-	hsLayoutTest.ml \
-	hsSyntaxOld.ml \
-	parserOld.ml \
-	simple.ml \
-	parserSimpleTestOld.ml \
-	hsParserStateOld.ml \
-	hsParserOld.ml \
-
 
 sources = \
 	data.ml \
@@ -95,6 +80,7 @@ info:
 	$(ocamldep) $(sources)
 
 clean:
+	$(RM) $(programs)
 	$(RM) *.cmo *.cma
 	$(RM) *.cmi
 	$(RM) *.annot

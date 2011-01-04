@@ -15,6 +15,8 @@ let with_option : ('a -> 'b) -> 'a option -> 'b option = fun f -> function
   | Some x -> Some (f x)
   | None   -> None
 
+let (|.|) f g x = f (g x)
+
 module L = List
 
 let rec last = function
@@ -23,7 +25,7 @@ let rec last = function
   | _ :: rest -> last rest
 
 let last' l = match last l with
-  | None   -> failwith "init"
+  | None   -> failwith "last'"
   | Some v -> v
 
 
